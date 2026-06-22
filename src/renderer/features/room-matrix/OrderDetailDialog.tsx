@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Dialog, Input, Select, Button } from '../../components'
 import type { Order, Room, FinancialLog } from '../../../shared/types'
 
@@ -32,6 +32,7 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
   const [actualAmount, setActualAmount] = useState('')
   const [deposit, setDeposit] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('WeChat')
+  const [notes, setNotes] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -45,6 +46,12 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
   const [editingLogId, setEditingLogId] = useState<number | null>(null)
   const [editAmount, setEditAmount] = useState('')
   const [editMethod, setEditMethod] = useState('WeChat')
+
+  // Room-change state
+  const [allRooms, setAllRooms] = useState<Room[]>([])
+  const [showRoomChange, setShowRoomChange] = useState(false)
+  const [targetRoomId, setTargetRoomId] = useState<number | null>(null)
+  const [confirmPriceChange, setConfirmPriceChange] = useState(false)
 
   const loadLogs = async (orderId: number) => {
     const logs: FinancialLog[] = await (window.electron.db.getFinancialLogsByOrder(orderId) as any)
@@ -61,13 +68,19 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
       setCheckOutDate(order.check_out_date)
       setActualAmount(String(order.actual_amount))
       setDeposit(String(order.deposit))
+      setNotes(order.notes || '')
       setError('')
       setConfirmDelete(false)
       setShowIncidental(false)
       setIncidentalAmount('100')
       setIncidentalMethod('WeChat')
       setEditingLogId(null)
+      setShowRoomChange(false)
+      setTargetRoomId(null)
+      setConfirmPriceChange(false)
       loadLogs(order.order_id)
+      // Load all rooms for room-change feature
+      window.electron.db.getRooms().then((rooms: any) => setAllRooms(rooms))
     }
   }, [open, order])
 
@@ -91,6 +104,7 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
         check_out_date: checkOutDate,
         actual_amount: Number(actualAmount),
         deposit: Number(deposit),
+        notes: notes.trim() || undefined,
       })
       await window.electron.db.updateFinancialLogPayment(order.order_id, paymentMethod)
       await window.electron.db.updateFinancialLogAmount(order.order_id, 'ROOM_FEE', Number(actualAmount))
@@ -105,6 +119,13 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
   }
 
   const today = new Date().toISOString().split('T')[0]
+
+  // Derived room-change data
+  const targetRoom = useMemo(
+    () => allRooms.find(r => r.room_id === targetRoomId) ?? null,
+    [allRooms, targetRoomId],
+  )
+  const isPriceDifferent = targetRoom && room && targetRoom.base_price !== room.base_price
 
   const handleStatusChange = async (newStatus: string) => {
     if (!order) return
@@ -173,6 +194,39 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
     setEditingLogId(log.log_id)
     setEditAmount(String(log.amount))
     setEditMethod(log.payment_method)
+  }
+
+  const handleRoomChange = async () => {
+    if (!order || !targetRoom || !room) return
+
+    // If price differs and user hasn't confirmed yet, ask for confirmation
+    if (isPriceDifferent && !confirmPriceChange) {
+      setConfirmPriceChange(true)
+      return
+    }
+
+    setSaving(true)
+    setError('')
+    try {
+      const updates: Record<string, any> = { room_id: targetRoom.room_id }
+      // Optionally adjust room fee to new room's base price
+      if (confirmPriceChange && isPriceDifferent) {
+        const nights = Math.max(1, Math.ceil((new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / 86400000))
+        const newAmount = targetRoom.base_price * nights
+        updates.actual_amount = newAmount
+        setActualAmount(String(newAmount))
+        await window.electron.db.updateFinancialLogAmount(order.order_id, 'ROOM_FEE', newAmount)
+      }
+      await window.electron.db.updateOrder(order.order_id, updates)
+      setShowRoomChange(false)
+      setTargetRoomId(null)
+      setConfirmPriceChange(false)
+      onSaved()
+    } catch (e: any) {
+      setError(e?.message || '换房失败')
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (!order || !room) return null
@@ -352,20 +406,98 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
           </Select>
         </div>
 
+        {/* Notes */}
+        <div className="space-y-1.5">
+          <label htmlFor="edit-notes" className="block text-sm font-medium text-gray-700">备注</label>
+          <textarea
+            id="edit-notes"
+            rows={2}
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            placeholder="特殊需求：加床、接机、禁止吸烟..."
+            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900
+              placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500
+              focus:border-primary-500 transition-colors resize-none"
+          />
+        </div>
+
         {error && <p className="text-sm text-red-600">{error}</p>}
+
+        {/* Room-change panel */}
+        {showRoomChange && order.status !== 'CHECKED_OUT' && (
+          <div className="p-3 bg-indigo-50 rounded-lg space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <Select
+                  label="选择房间"
+                  value={targetRoomId ?? ''}
+                  onChange={e => {
+                    const val = e.target.value
+                    setTargetRoomId(val ? Number(val) : null)
+                    setConfirmPriceChange(false)
+                  }}
+                >
+                  <option value="">请选择目标房间</option>
+                  {allRooms
+                    .filter(r => r.room_id !== room.room_id)
+                    .map(r => (
+                      <option key={r.room_id} value={r.room_id}>
+                        {r.room_number} - {r.room_type}
+                      </option>
+                    ))}
+                </Select>
+              </div>
+            </div>
+
+            {isPriceDifferent && confirmPriceChange && (
+              <p className="text-xs text-amber-700 bg-amber-50 px-3 py-1.5 rounded">
+                ⚠️ 新房型价格（¥{targetRoom!.base_price}/晚）与当前不同，将自动调整房费
+              </p>
+            )}
+
+            {isPriceDifferent && !confirmPriceChange && targetRoomId && (
+              <p className="text-xs text-indigo-600">
+                新房型价格（¥{targetRoom!.base_price}/晚）与当前不同
+              </p>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleRoomChange}
+                disabled={saving || !targetRoomId}
+                className="px-3 py-1.5 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                {confirmPriceChange ? '确认换房' : '换房'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowRoomChange(false)
+                  setTargetRoomId(null)
+                  setConfirmPriceChange(false)
+                }}
+                className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Status transition buttons */}
         {order.status === 'PREBOOK' && (
-          <div className="pt-1">
+          <div className="pt-1 flex gap-2">
             <Button variant="secondary" onClick={() => handleStatusChange('IN_HOUSE')} disabled={saving}>
               转为在住
             </Button>
           </div>
         )}
         {order.status === 'IN_HOUSE' && (
-          <div className="pt-1">
+          <div className="pt-1 flex gap-2">
             <Button variant="secondary" onClick={() => handleStatusChange('CHECKED_OUT')} disabled={saving}>
               办理退房
+            </Button>
+            <Button variant="secondary" onClick={() => { setShowRoomChange(true); setConfirmPriceChange(false) }} disabled={saving}>
+              换房
             </Button>
           </div>
         )}

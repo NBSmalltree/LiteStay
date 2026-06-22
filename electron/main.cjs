@@ -64,6 +64,13 @@ function initTables(database) {
     const stmt = database.prepare('INSERT OR IGNORE INTO room_types (type_name, sort_order) VALUES (?, ?)');
     defaults.forEach((name, i) => stmt.run(name, i + 1));
   }
+
+  // Migration: add notes column to orders if missing
+  try {
+    database.prepare('SELECT notes FROM orders LIMIT 1').get();
+  } catch (e) {
+    database.exec('ALTER TABLE orders ADD COLUMN notes TEXT');
+  }
 }
 
 // --- IPC Handlers ---
@@ -104,11 +111,11 @@ function registerIpcHandlers() {
   // Orders
   ipcMain.handle('db:insertOrder', (_event, order) => {
     const stmt = getDb().prepare(
-      'INSERT INTO orders (room_id, guest_name, check_in_date, check_out_date, actual_amount, deposit, status) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO orders (room_id, guest_name, check_in_date, check_out_date, actual_amount, deposit, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     );
     const result = stmt.run(
       order.room_id, order.guest_name, order.check_in_date,
-      order.check_out_date, order.actual_amount, order.deposit, order.status
+      order.check_out_date, order.actual_amount, order.deposit, order.status, order.notes || null
     );
     return getDb().prepare('SELECT * FROM orders WHERE order_id = ?').get(result.lastInsertRowid);
   });

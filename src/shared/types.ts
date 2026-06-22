@@ -20,6 +20,7 @@ export interface Order {
   actual_amount: number
   deposit: number
   status: 'PREBOOK' | 'IN_HOUSE' | 'CHECKED_OUT'
+  notes?: string
 }
 
 export interface FinancialLog {

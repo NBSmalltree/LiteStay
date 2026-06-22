@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Button } from '../../components'
+import { Button, Input } from '../../components'
 import type { Order, Room } from '../../../shared/types'
 
 const STATUS_OPTIONS = [
@@ -37,6 +37,7 @@ export default function OrdersPage({ onEditOrder, refreshKey }: Props) {
   const [rooms, setRooms] = useState<Room[]>([])
   const [incidentalMap, setIncidentalMap] = useState<Map<number, number>>(new Map())
   const [filter, setFilter] = useState('ALL')
+  const [searchQuery, setSearchQuery] = useState('')
   const [localKey, setLocalKey] = useState(0)
 
   useEffect(() => {
@@ -56,9 +57,23 @@ export default function OrdersPage({ onEditOrder, refreshKey }: Props) {
   }, [rooms])
 
   const filtered = useMemo(() => {
-    if (filter === 'ALL') return orders
-    return orders.filter(o => o.status === filter)
-  }, [orders, filter])
+    // Status filter
+    let result = filter === 'ALL' ? orders : orders.filter(o => o.status === filter)
+    // Search filter
+    const q = searchQuery.trim().toLowerCase()
+    if (q) {
+      result = result.filter(order => {
+        const room = roomMap.get(order.room_id)
+        return (
+          order.guest_name?.toLowerCase().includes(q) ||
+          room?.room_number?.toLowerCase().includes(q) ||
+          order.check_in_date?.includes(q) ||
+          order.check_out_date?.includes(q)
+        )
+      })
+    }
+    return result
+  }, [orders, filter, searchQuery, roomMap])
 
   const counts = useMemo(() => ({
     ALL: orders.length,
@@ -97,10 +112,38 @@ export default function OrdersPage({ onEditOrder, refreshKey }: Props) {
         ))}
       </div>
 
+      {/* Search */}
+      <div className="relative">
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+        </svg>
+        <Input
+          type="text"
+          placeholder="搜索客人、房号、日期..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          className="pl-9 pr-9"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+      </div>
+
       {/* Table */}
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">
-          {filter === 'ALL' ? '暂无订单' : `暂无${STATUS_OPTIONS.find(o => o.value === filter)?.label}订单`}
+          {searchQuery.trim()
+            ? '没有找到匹配的订单'
+            : filter === 'ALL'
+              ? '暂无订单'
+              : `暂无${STATUS_OPTIONS.find(o => o.value === filter)?.label}订单`}
         </div>
       ) : (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">

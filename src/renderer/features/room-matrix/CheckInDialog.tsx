@@ -33,6 +33,7 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
   const [actualAmount, setActualAmount] = useState('')
   const [deposit, setDeposit] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('WeChat')
+  const [notes, setNotes] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -44,6 +45,7 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
       setActualAmount(String(room.base_price))
       setDeposit('0')
       setPaymentMethod('WeChat')
+      setNotes('')
       setError('')
     }
   }, [open, room, checkInDate])
@@ -73,6 +75,7 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
         actual_amount: Number(actualAmount),
         deposit: Number(deposit),
         status: isFuture ? 'PREBOOK' : 'IN_HOUSE',
+        notes: notes.trim() || undefined,
       })
 
       // Log room fee
@@ -160,6 +163,21 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
             <Select label="支付方式" id="payment-method" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
               {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
             </Select>
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-1.5">
+            <label htmlFor="notes" className="block text-sm font-medium text-gray-700">备注</label>
+            <textarea
+              id="notes"
+              rows={2}
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="特殊需求：加床、接机、禁止吸烟..."
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900
+                placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500
+                focus:border-primary-500 transition-colors resize-none"
+            />
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
