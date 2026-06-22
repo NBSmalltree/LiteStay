@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
-import { Card, Input, Select } from '../../components'
-import type { FinancialSummary, FinancialLogDetailed, Order, Room } from '../../../shared/types'
+import { Card, Input, Select, Dialog } from '../../components'
+import type { FinancialSummary, FinancialLogDetailed, Order, Room, NightAuditData, RevenueByRoomType, OccupancyStats } from '../../../shared/types'
 
 const today = () => new Date().toISOString().slice(0, 10)
 const firstOfMonth = () => {
@@ -32,7 +32,11 @@ export default function FinancePage({ refreshKey }: { refreshKey: number }) {
   const [incOrderId, setIncOrderId] = useState('')
   const [orders, setOrders] = useState<Order[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
-
+  const [showNightAuditConfirm, setShowNightAuditConfirm] = useState(false)
+  const [showNightAuditReport, setShowNightAuditReport] = useState(false)
+  const [auditData, setAuditData] = useState<NightAuditData | null>(null)
+  const [auditLoading, setAuditLoading] = useState(false)
+  const [auditExporting, setAuditExporting] = useState(false)
   const resolvedFrom = range === 'today' ? today() : range === 'month' ? firstOfMonth() : dateFrom
   const resolvedTo = range === 'today' ? today() : range === 'month' ? today() : dateTo
 
@@ -71,6 +75,82 @@ export default function FinancePage({ refreshKey }: { refreshKey: number }) {
     }
   }
 
+  const executeNightAudit = async () => {
+    setShowNightAuditConfirm(false)
+    setAuditLoading(true)
+    try {
+      const date = today()
+      const [summary, byRoomType, occupancy] = await Promise.all([
+        window.electron.db.getFinancialSummary(date, date),
+        window.electron.db.getRevenueByRoomType(date, date),
+        window.electron.db.getOccupancyStats(date),
+      ])
+      setAuditData({
+        date,
+        summary: {
+          total: summary.roomFee + summary.deposit + summary.incidental,
+          roomFee: summary.roomFee,
+          deposit: summary.deposit,
+          incidental: summary.incidental,
+        },
+        byRoomType,
+        byMethod: summary.byMethod,
+        occupancy,
+      })
+      setShowNightAuditReport(true)
+    } catch (e) {
+      console.error('[NightAudit] error:', e)
+      alert('夜审数据加载失败，请重试')
+    } finally {
+      setAuditLoading(false)
+    }
+  }
+
+  const handlePrintAudit = () => {
+    const el = document.getElementById('night-audit-print')
+    if (!el || !auditData) return
+    const printWin = window.open('', '_blank')
+    if (!printWin) return
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html><head><meta charset="utf-8"><title>${auditData.date} 夜审报表</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; padding: 40px; color: #111827; }
+        h1 { font-size: 22px; text-align: center; margin-bottom: 28px; border-bottom: 2px solid #111827; padding-bottom: 12px; }
+        h2 { font-size: 15px; margin: 20px 0 10px; color: #374151; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+        th, td { padding: 6px 10px; text-align: left; font-size: 13px; }
+        th { background: #f9fafb; font-weight: 600; border-bottom: 1px solid #e5e7eb; }
+        td { border-bottom: 1px solid #f3f4f6; }
+        .amount { text-align: right; }
+        .total-row { font-weight: 700; font-size: 18px; }
+        .section { margin-bottom: 24px; }
+        .sub { color: #6b7280; padding-left: 20px; }
+        @media print { body { padding: 20px; } }
+      </style></head><body>
+      ${el.innerHTML}
+      </body></html>
+    `)
+    printWin.document.close()
+    printWin.focus()
+    setTimeout(() => { printWin.print(); printWin.close() }, 300)
+  }
+
+  const handleExportAudit = async () => {
+    if (!auditData) return
+    setAuditExporting(true)
+    try {
+      const path = await window.electron.db.exportNightAudit(auditData)
+      if (path) alert(`夜审报表已导出到：${path}`)
+    } catch (e) {
+      console.error('[NightAudit] export error:', e)
+      alert('导出失败，请重试')
+    } finally {
+      setAuditExporting(false)
+    }
+  }
+
   const totalIncome = summary ? summary.roomFee + summary.incidental : 0
 
   return (
@@ -81,16 +161,28 @@ export default function FinancePage({ refreshKey }: { refreshKey: number }) {
           <h1 className="text-2xl font-bold text-gray-900">财务收银</h1>
           <p className="mt-1 text-sm text-gray-500">收入统计与流水明细</p>
         </div>
-        <button
-          onClick={handleExport}
-          disabled={exporting || logs.length === 0}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-          </svg>
-          {exporting ? '导出中...' : '导出 Excel'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowNightAuditConfirm(true)}
+            disabled={auditLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+            </svg>
+            {auditLoading ? '夜审中...' : '夜审'}
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={exporting || logs.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            {exporting ? '导出中...' : '导出 Excel'}
+          </button>
+        </div>
       </div>
 
       {/* Date range tabs */}
@@ -306,6 +398,177 @@ export default function FinancePage({ refreshKey }: { refreshKey: number }) {
           )}
         </Card>
       </div>
+
+      {/* Night Audit Confirmation Dialog */}
+      <Dialog open={showNightAuditConfirm} onClose={() => setShowNightAuditConfirm(false)} title="夜审确认">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            确认执行今日夜审？将生成 <span className="font-semibold text-gray-900">{today()}</span> 的财务汇总报表。
+          </p>
+          <p className="text-xs text-gray-400">夜审报表将汇总今日所有收入、房型统计、支付方式占比及入住率数据。</p>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              onClick={() => setShowNightAuditConfirm(false)}
+              className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              取消
+            </button>
+            <button
+              onClick={executeNightAudit}
+              className="px-4 py-2 text-sm font-medium bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
+            >
+              确认执行
+            </button>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Night Audit Report Dialog */}
+      <Dialog
+        open={showNightAuditReport}
+        onClose={() => setShowNightAuditReport(false)}
+        title={auditData ? `${auditData.date} 夜审报表` : '夜审报表'}
+        maxWidth="xl"
+      >
+        {auditData && (
+          <div>
+            <div id="night-audit-print" className="space-y-5 max-h-[65vh] overflow-y-auto pr-1">
+              {/* Income Summary */}
+              <div>
+                <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5 mb-3">
+                  <span className="w-5 h-5 rounded bg-green-50 flex items-center justify-center text-green-600 text-xs">¥</span>
+                  收入汇总
+                </h2>
+                <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-sm text-gray-500">总收入</span>
+                    <span className="text-xl font-bold text-gray-900">{fmtCurrency(auditData.summary.total)}</span>
+                  </div>
+                  <div className="border-t border-gray-200 pt-2 space-y-1.5">
+                    <div className="flex justify-between items-center pl-4">
+                      <span className="text-sm text-gray-500">房费收入</span>
+                      <span className="text-sm font-semibold text-gray-800">{fmtCurrency(auditData.summary.roomFee)}</span>
+                    </div>
+                    <div className="flex justify-between items-center pl-4">
+                      <span className="text-sm text-gray-500">押金收入</span>
+                      <span className="text-sm font-semibold text-gray-800">{fmtCurrency(auditData.summary.deposit)}</span>
+                    </div>
+                    <div className="flex justify-between items-center pl-4">
+                      <span className="text-sm text-gray-500">杂费收入</span>
+                      <span className="text-sm font-semibold text-gray-800">{fmtCurrency(auditData.summary.incidental)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Revenue by Room Type */}
+              {auditData.byRoomType.length > 0 && (
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5 mb-3">
+                    <span className="w-5 h-5 rounded bg-blue-50 flex items-center justify-center text-blue-600 text-xs">房</span>
+                    按房型统计
+                  </h2>
+                  <div className="bg-gray-50 rounded-xl p-4 space-y-1.5">
+                    {auditData.byRoomType.map((rt: RevenueByRoomType) => (
+                      <div key={rt.room_type} className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">{rt.room_type}</span>
+                        <span className="text-sm text-gray-800">
+                          <span className="font-semibold">{fmtCurrency(rt.total)}</span>
+                          <span className="text-gray-400 ml-1">({rt.order_count}间)</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Revenue by Payment Method */}
+              {auditData.byMethod.length > 0 && (
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5 mb-3">
+                    <span className="w-5 h-5 rounded bg-purple-50 flex items-center justify-center text-purple-600 text-xs">$</span>
+                    按支付方式统计
+                  </h2>
+                  <div className="bg-gray-50 rounded-xl p-4 space-y-1.5">
+                    {auditData.byMethod.map((m) => {
+                      const pct = auditData.summary.total > 0
+                        ? ((m.total / auditData.summary.total) * 100).toFixed(1)
+                        : '0.0'
+                      return (
+                        <div key={m.payment_method} className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full" style={{ background: METHOD_COLORS[m.payment_method] || '#9CA3AF' }} />
+                            <span className="text-sm text-gray-600">{METHOD_LABEL[m.payment_method] || m.payment_method}</span>
+                          </div>
+                          <span className="text-sm text-gray-800">
+                            <span className="font-semibold">{fmtCurrency(m.total)}</span>
+                            <span className="text-gray-400 ml-1">({pct}%)</span>
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Occupancy */}
+              <div>
+                <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5 mb-3">
+                  <span className="w-5 h-5 rounded bg-amber-50 flex items-center justify-center text-amber-600 text-xs">%</span>
+                  入住率
+                </h2>
+                <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">今日入住率</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {auditData.occupancy.totalRooms > 0
+                        ? `${((auditData.occupancy.occupiedRooms / auditData.occupancy.totalRooms) * 100).toFixed(0)}%`
+                        : '0%'
+                      }
+                      <span className="text-gray-400 font-normal ml-1">
+                        ({auditData.occupancy.occupiedRooms}/{auditData.occupancy.totalRooms}间)
+                      </span>
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">空房</span>
+                    <span className="text-sm font-semibold text-gray-900">{auditData.occupancy.vacantRooms}间</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-gray-100">
+              <button
+                onClick={handlePrintAudit}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m0 0a48.159 48.159 0 018.5 0m-8.5 0V5.625a2.25 2.25 0 012.25-2.25h4.5a2.25 2.25 0 012.25 2.25v1.613" />
+                </svg>
+                打印报表
+              </button>
+              <button
+                onClick={handleExportAudit}
+                disabled={auditExporting}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-40 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                {auditExporting ? '导出中...' : '导出 Excel'}
+              </button>
+              <button
+                onClick={() => setShowNightAuditReport(false)}
+                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                关闭
+              </button>
+            </div>
+          </div>
+        )}
+      </Dialog>
     </div>
   )
 }
@@ -324,4 +587,8 @@ function typeBadgeClass(type: string) {
     case 'INCIDENTAL': return 'bg-amber-50 text-amber-700'
     default: return 'bg-gray-100 text-gray-600'
   }
+}
+
+function fmtCurrency(n: number) {
+  return `¥${n.toLocaleString('zh-CN', { minimumFractionDigits: 0 })}`
 }

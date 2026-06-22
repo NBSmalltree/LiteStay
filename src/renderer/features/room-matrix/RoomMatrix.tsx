@@ -46,8 +46,7 @@ export default function RoomMatrix({ onCellClick, onOrderClick }: {
   useEffect(() => { window.electron.db.getRooms().then(setRooms) }, [])
   useEffect(() => { fetchOrders() }, [])
   useEffect(() => {
-    const unsub = window.electron.win.onOrdersChanged(() => fetchOrders())
-    return () => { unsub() }
+    window.electron.win.onOrdersChanged(() => fetchOrders())
   }, [])
 
   const todayStr = useMemo(() => fmtDate(today), [today])
@@ -185,8 +184,8 @@ export default function RoomMatrix({ onCellClick, onOrderClick }: {
                 <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#6b7280' }} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
                 <Tooltip
-                  formatter={(value: number) => [`${value}间`, '预订数']}
-                  labelFormatter={(label: string) => `日期: ${label}`}
+                  formatter={(value: any) => [`${value}间`, '预订数']}
+                  labelFormatter={(label: any) => `日期: ${label}`}
                   contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
                 />
                 <Bar dataKey="预订数" fill="#6366f1" radius={[4, 4, 0, 0]} />

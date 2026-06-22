@@ -30,6 +30,9 @@ contextBridge.exposeInMainWorld('electron', {
     getIncidentalSums: () => ipcRenderer.invoke('db:getIncidentalSums'),
     getFinancialSummary: (dateFrom, dateTo) => ipcRenderer.invoke('db:getFinancialSummary', dateFrom, dateTo),
     getFinancialLogsDetailed: (dateFrom, dateTo) => ipcRenderer.invoke('db:getFinancialLogsDetailed', dateFrom, dateTo),
+    getRevenueByRoomType: (dateFrom, dateTo) => ipcRenderer.invoke('db:getRevenueByRoomType', dateFrom, dateTo),
+    getOccupancyStats: (date) => ipcRenderer.invoke('db:getOccupancyStats', date),
     exportFinancialLogs: (dateFrom, dateTo) => ipcRenderer.invoke('db:exportFinancialLogs', dateFrom, dateTo),
+    exportNightAudit: (auditData) => ipcRenderer.invoke('db:exportNightAudit', auditData),
   },
 });

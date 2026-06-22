@@ -5,13 +5,14 @@ interface DialogProps {
   onClose: () => void
   title: string
   children: ReactNode
-  maxWidth?: 'sm' | 'md' | 'lg'
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl'
 }
 
 const maxWidths = {
   sm: 'max-w-sm',
   md: 'max-w-md',
   lg: 'max-w-lg',
+  xl: 'max-w-xl',
 }
 
 export function Dialog({ open, onClose, title, children, maxWidth = 'md' }: DialogProps) {

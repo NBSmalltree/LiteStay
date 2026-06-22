@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, Button, Input, Select, RoomTypeManager } from './components'
 import RoomMatrix from './features/room-matrix/RoomMatrix'
 import CheckInDialog from './features/room-matrix/CheckInDialog'
 import OrderDetailDialog from './features/room-matrix/OrderDetailDialog'
 import OrdersPage from './features/orders/OrdersPage'
 import FinancePage from './features/finance/FinancePage'
+import RoomStatusOverview from './features/room-matrix/RoomStatusOverview'
 import type { Room, RoomType, Order } from '../shared/types'
 
-type Page = 'dashboard' | 'rooms' | 'orders' | 'finance'
+type Page = 'dashboard' | 'rooms' | 'orders' | 'overview' | 'finance'
 
 const navItems: { id: Page; label: string; icon: JSX.Element }[] = [
   {
@@ -34,6 +35,15 @@ const navItems: { id: Page; label: string; icon: JSX.Element }[] = [
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
+      </svg>
+    ),
+  },
+  {
+    id: 'overview',
+    label: '房态总览',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25a2.25 2.25 0 01-2.25-2.25v-2.25z" />
       </svg>
     ),
   },
@@ -89,6 +99,10 @@ export default function App() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [selectedOrderRoom, setSelectedOrderRoom] = useState<Room | null>(null)
 
+  // Orders data for reminders
+  const [orders, setOrders] = useState<Order[]>([])
+  const [orderFilter, setOrderFilter] = useState('ALL')
+
   // Room form state
   const [roomNumber, setRoomNumber] = useState('101')
   const [roomType, setRoomType] = useState('')
@@ -114,6 +128,37 @@ export default function App() {
   useEffect(() => {
     window.electron.win.onOrdersChanged(() => setRefreshKey(k => k + 1))
   }, [])
+
+  // Load orders for reminder banner
+  const loadOrders = async () => {
+    setOrders(await window.electron.db.getOrders())
+  }
+  useEffect(() => { loadOrders() }, [refreshKey])
+
+  // Reminder computations
+  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const tomorrowStr = useMemo(() => new Date(Date.now() + 86400000).toISOString().slice(0, 10), [])
+
+  const todayCheckIns = useMemo(
+    () => orders.filter(o => o.status === 'PREBOOK' && o.check_in_date === todayStr).length,
+    [orders, todayStr]
+  )
+  const tomorrowCheckOuts = useMemo(
+    () => orders.filter(o => o.status === 'IN_HOUSE' && o.check_out_date === tomorrowStr).length,
+    [orders, tomorrowStr]
+  )
+  const overdueOrders = useMemo(
+    () => orders.filter(o => o.status === 'IN_HOUSE' && o.check_out_date < todayStr).length,
+    [orders, todayStr]
+  )
+
+  const hasReminders = todayCheckIns > 0 || tomorrowCheckOuts > 0 || overdueOrders > 0
+  const showReminders = hasReminders && (page === 'dashboard' || page === 'rooms')
+
+  const handleReminderClick = (filter: string) => {
+    setOrderFilter(filter)
+    setPage('orders')
+  }
 
   const handleInsertRoom = async () => {
     setFormError('')
@@ -178,6 +223,42 @@ export default function App() {
 
         {/* Main content */}
         <main className="flex-1 overflow-auto bg-gray-50">
+          {/* Reminder banner */}
+          {showReminders && (
+            <div className="px-6 pt-4 flex flex-wrap gap-2">
+              {todayCheckIns > 0 && (
+                <button
+                  onClick={() => handleReminderClick('PREBOOK')}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-sm font-medium hover:bg-blue-100 transition-colors cursor-pointer"
+                >
+                  <span className="text-base">📥</span>
+                  <span>今日入住</span>
+                  <span className="text-xs font-bold bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center">{todayCheckIns}</span>
+                </button>
+              )}
+              {tomorrowCheckOuts > 0 && (
+                <button
+                  onClick={() => handleReminderClick('IN_HOUSE')}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm font-medium hover:bg-yellow-100 transition-colors cursor-pointer"
+                >
+                  <span className="text-base">📤</span>
+                  <span>明日退房</span>
+                  <span className="text-xs font-bold bg-yellow-500 text-white rounded-full w-5 h-5 flex items-center justify-center">{tomorrowCheckOuts}</span>
+                </button>
+              )}
+              {overdueOrders > 0 && (
+                <button
+                  onClick={() => handleReminderClick('IN_HOUSE')}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm font-medium hover:bg-red-100 transition-colors cursor-pointer"
+                >
+                  <span className="text-base">⏰</span>
+                  <span>超时未退</span>
+                  <span className="text-xs font-bold bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center">{overdueOrders}</span>
+                </button>
+              )}
+            </div>
+          )}
+
           {page === 'dashboard' && (
             <div className="p-6 h-full">
               <RoomMatrix key={refreshKey}
@@ -206,7 +287,7 @@ export default function App() {
           )}
           {page === 'orders' && (
             <div className="p-8">
-              <OrdersPage refreshKey={refreshKey} onEditOrder={(order, room) => {
+              <OrdersPage refreshKey={refreshKey} initialFilter={orderFilter} onEditOrder={(order, room) => {
                 setSelectedOrder(order)
                 setSelectedOrderRoom(room)
               }} />

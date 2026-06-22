@@ -45,6 +45,26 @@ export interface FinancialSummary {
   daily: { date: string; total: number }[]
 }
 
+export interface RevenueByRoomType {
+  room_type: string
+  total: number
+  order_count: number
+}
+
+export interface OccupancyStats {
+  totalRooms: number
+  occupiedRooms: number
+  vacantRooms: number
+}
+
+export interface NightAuditData {
+  date: string
+  summary: { total: number; roomFee: number; deposit: number; incidental: number }
+  byRoomType: RevenueByRoomType[]
+  byMethod: { payment_method: string; total: number }[]
+  occupancy: OccupancyStats
+}
+
 export interface ElectronAPI {
   getPlatform(): Promise<string>
   win: {
@@ -74,7 +94,10 @@ export interface ElectronAPI {
     getIncidentalSums(): Promise<{ order_id: number; total: number }[]>
     getFinancialSummary(dateFrom: string, dateTo: string): Promise<FinancialSummary>
     getFinancialLogsDetailed(dateFrom: string, dateTo: string): Promise<FinancialLogDetailed[]>
+    getRevenueByRoomType(dateFrom: string, dateTo: string): Promise<RevenueByRoomType[]>
+    getOccupancyStats(date: string): Promise<OccupancyStats>
     exportFinancialLogs(dateFrom: string, dateTo: string): Promise<string | null>
+    exportNightAudit(auditData: NightAuditData): Promise<string | null>
   }
 }
 

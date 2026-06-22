@@ -30,15 +30,20 @@ const PAYMENT_LABELS: Record<string, string> = {
 interface Props {
   onEditOrder: (order: Order, room: Room) => void
   refreshKey?: number
+  initialFilter?: string
 }
 
-export default function OrdersPage({ onEditOrder, refreshKey }: Props) {
+export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: Props) {
   const [orders, setOrders] = useState<Order[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
   const [incidentalMap, setIncidentalMap] = useState<Map<number, number>>(new Map())
-  const [filter, setFilter] = useState('ALL')
+  const [filter, setFilter] = useState(initialFilter ?? 'ALL')
   const [searchQuery, setSearchQuery] = useState('')
   const [localKey, setLocalKey] = useState(0)
+
+  useEffect(() => {
+    if (initialFilter) setFilter(initialFilter)
+  }, [initialFilter])
 
   useEffect(() => {
     Promise.resolve(window.electron.db.getOrders()).then(setOrders)
