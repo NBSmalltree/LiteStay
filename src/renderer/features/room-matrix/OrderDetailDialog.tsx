@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Dialog, Input, Select, Button } from '../../components'
 import type { Order, Room, FinancialLog } from '../../../shared/types'
 import { SOURCE_LABELS } from '../../../shared/types'
@@ -35,6 +36,7 @@ const SOURCE_OPTIONS = [
 ]
 
 export default function OrderDetailDialog({ open, order, room, onClose, onSaved, onDeleted }: Props) {
+  const { t } = useTranslation()
   const [guestName, setGuestName] = useState('')
   const [guestPhone, setGuestPhone] = useState('')
   const [checkInDate, setCheckInDate] = useState('')
@@ -315,9 +317,26 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
 
   if (!order || !room) return null
 
+  const footer = (
+    <div className="flex justify-between items-center">
+      <Button
+        variant="ghost"
+        className={confirmDelete ? 'text-red-600 hover:bg-red-50' : 'text-red-400 hover:text-red-600'}
+        onClick={handleDelete}
+        disabled={saving}
+      >
+        {confirmDelete ? '确认删除？' : '删除订单'}
+      </Button>
+      <div className="flex gap-3">
+        <Button variant="secondary" onClick={onClose}>取消</Button>
+        <Button onClick={handleSave} disabled={saving}>{saving ? '保存中...' : '保存修改'}</Button>
+      </div>
+    </div>
+  )
+
   return (
-    <Dialog open={open} onClose={onClose} title="订单详情" maxWidth="md">
-      <div className="space-y-4">
+    <Dialog open={open} onClose={onClose} title={t('orderDetail.title')} maxWidth="md" footer={footer}>
+      <div className="space-y-3">
         {/* Room + status */}
         <div className="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-lg">
           <span className="text-sm font-semibold text-gray-900">{room.room_number}</span>
@@ -331,7 +350,7 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
         </div>
 
         {/* Date info */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <label htmlFor="edit-checkin" className="block text-sm font-medium text-gray-700">入住日期</label>
             <input
@@ -481,18 +500,18 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
         </div>
 
         {/* Editable fields */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <Input label="客人称呼" id="edit-guest" value={guestName} onChange={e => setGuestName(e.target.value)} />
           <Input label="手机号（选填）" id="edit-guest-phone" value={guestPhone} onChange={e => setGuestPhone(e.target.value)} />
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3">
           <Input label="实际房费" id="edit-amount" type="number" value={actualAmount} onChange={e => setActualAmount(e.target.value)} />
           <Input label="押金" id="edit-deposit" type="number" value={deposit} onChange={e => setDeposit(e.target.value)} />
           <Select label="支付方式" id="edit-payment" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
             {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
           </Select>
         </div>
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-3">
           <Select label="客人来源" id="edit-source" value={source || 'direct'} onChange={e => setSource(e.target.value)}>
             {SOURCE_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </Select>
@@ -503,7 +522,7 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
           <label htmlFor="edit-notes" className="block text-sm font-medium text-gray-700">备注</label>
           <textarea
             id="edit-notes"
-            rows={2}
+            rows={1}
             value={notes}
             onChange={e => setNotes(e.target.value)}
             placeholder="特殊需求：加床、接机、禁止吸烟..."
@@ -654,22 +673,6 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
             </Button>
           </div>
         )}
-
-        {/* Actions */}
-        <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-          <Button
-            variant="ghost"
-            className={confirmDelete ? 'text-red-600 hover:bg-red-50' : 'text-red-400 hover:text-red-600'}
-            onClick={handleDelete}
-            disabled={saving}
-          >
-            {confirmDelete ? '确认删除？' : '删除订单'}
-          </Button>
-          <div className="flex gap-3">
-            <Button variant="secondary" onClick={onClose}>取消</Button>
-            <Button onClick={handleSave} disabled={saving}>{saving ? '保存中...' : '保存修改'}</Button>
-          </div>
-        </div>
       </div>
 
       {/* Price change confirmation dialog */}
@@ -682,6 +685,7 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
           }}
           title="换房价格确认"
           maxWidth="sm"
+          zIndex={60}
         >
           <div className="space-y-4">
             <div className="bg-gray-50 rounded-lg p-4 space-y-2">

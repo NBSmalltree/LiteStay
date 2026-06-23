@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -35,6 +36,7 @@ const SOURCE_COLORS: Record<string, string> = {
 }
 
 export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
+  const { t } = useTranslation()
   const [occupancy, setOccupancy] = useState<DailyOccupancy[]>([])
   const [revenue, setRevenue] = useState<DailyRevenueByType[]>([])
   const [roomTypeData, setRoomTypeData] = useState<RoomTypeAnalysis[]>([])
@@ -185,18 +187,18 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
     <div className="p-6 space-y-6">
       {/* Page Title */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">数据分析</h1>
-        <p className="mt-1 text-sm text-gray-500">近30天经营数据概览</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('analytics.title')}</h1>
+        <p className="mt-1 text-sm text-gray-500">{t('analytics.subtitle')}</p>
       </div>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card padding="md" className="flex flex-col items-center justify-center">
-          <span className="text-xs text-gray-500 mb-1">今日入住率</span>
+          <span className="text-xs text-gray-500 mb-1">{t('analytics.todayOccupancy')}</span>
           <span className="text-3xl font-bold text-primary-600">{todayOccupancy}%</span>
         </Card>
         <Card padding="md" className="flex flex-col items-center justify-center">
-          <span className="text-xs text-gray-500 mb-1">本月收益</span>
+          <span className="text-xs text-gray-500 mb-1">{t('analytics.monthlyRevenue')}</span>
           <span className="text-3xl font-bold text-green-600">¥{fmtRevenue(revenueGrowth.current_month)}</span>
           {revenueGrowth.last_month > 0 && (
             <span className={`text-xs mt-1 ${revenueGrowth.growth_rate >= 0 ? 'text-green-600' : 'text-red-600'}`}>

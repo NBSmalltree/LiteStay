@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Card, Button, Dialog, Input, Select } from '../../components'
 import type { PriceRule, PriceCalendar, RoomType } from '../../../shared/types'
 
@@ -14,6 +15,7 @@ interface PricingPageProps {
 }
 
 export default function PricingPage({ refreshKey }: PricingPageProps) {
+  const { t } = useTranslation()
   const [rules, setRules] = useState<PriceRule[]>([])
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
   const [calendarRoomType, setCalendarRoomType] = useState('')
@@ -95,10 +97,10 @@ export default function PricingPage({ refreshKey }: PricingPageProps) {
     <div className="p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">房价策略管理</h1>
-          <p className="mt-1 text-sm text-gray-500">设置不同房型、不同时段的价格规则</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('pricing.title')}</h1>
+          <p className="mt-1 text-sm text-gray-500">{t('pricing.subtitle')}</p>
         </div>
-        <Button onClick={handleAddRule}>新增规则</Button>
+        <Button onClick={handleAddRule}>{t('pricing.addRule')}</Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -108,7 +110,7 @@ export default function PricingPage({ refreshKey }: PricingPageProps) {
           {rules.length === 0 ? (
             <Card>
               <div className="text-center py-8 text-gray-400 text-sm">
-                暂无价格规则，点击"新增规则"添加第一条
+                {t('pricing.noRules')}
               </div>
             </Card>
           ) : (

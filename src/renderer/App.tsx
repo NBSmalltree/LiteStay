@@ -248,7 +248,7 @@ export default function App() {
         <div className="flex items-center gap-2">
           <button
             onClick={toggleLanguage}
-            className="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
+            className="titlebar-no-drag px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
             title={i18n.language.startsWith('zh') ? 'Switch to English' : '切换到中文'}
           >
             {i18n.language.startsWith('zh') ? 'EN' : '中'}

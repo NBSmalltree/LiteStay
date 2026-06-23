@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Card, Button, Dialog, Input, Select } from '../../components'
 import type { InvoiceWithOrder, Order, Room } from '../../../shared/types'
 
@@ -18,6 +19,7 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 export default function InvoicesPage({ refreshKey }: Props) {
+  const { t } = useTranslation()
   const [invoices, setInvoices] = useState<InvoiceWithOrder[]>([])
   const [orders, setOrders] = useState<Order[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
@@ -226,10 +228,10 @@ export default function InvoicesPage({ refreshKey }: Props) {
     <div className="p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">发票管理</h1>
-          <p className="mt-1 text-sm text-gray-500">记录客人发票需求，管理开票状态</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('invoices.title')}</h1>
+          <p className="mt-1 text-sm text-gray-500">{t('invoices.subtitle')}</p>
         </div>
-        <Button onClick={handleNew}>新增发票</Button>
+        <Button onClick={handleNew}>{t('invoices.addInvoice')}</Button>
       </div>
 
       {/* Statistics cards */}
@@ -374,7 +376,7 @@ export default function InvoicesPage({ refreshKey }: Props) {
           </div>
         ) : (
           <div className="text-center py-12 text-gray-400 text-sm">
-            {invoices.length === 0 ? '暂无发票记录，点击"新增发票"开始' : '当前筛选条件下无发票记录'}
+            {invoices.length === 0 ? t('invoices.noInvoices') : t('invoices.noFilteredInvoices')}
           </div>
         )}
       </Card>

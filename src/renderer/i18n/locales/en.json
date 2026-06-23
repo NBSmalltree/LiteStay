@@ -183,6 +183,7 @@
   },
   "guests": {
     "title": "Guests",
+    "subtitle": "Manage guest profiles and history",
     "totalGuests": "Total Guests",
     "newThisMonth": "New This Month",
     "returningGuests": "Returning Guests",
@@ -207,6 +208,7 @@
   },
   "pricing": {
     "title": "Pricing",
+    "subtitle": "Set price rules for different room types and periods",
     "rules": "Rules",
     "calendar": "Price Calendar",
     "addRule": "Add Rule",
@@ -225,10 +227,12 @@
     "fixedPrice": "Fixed Price",
     "priority": "Priority",
     "active": "Active",
-    "inactive": "Inactive"
+    "inactive": "Inactive",
+    "noRules": "No pricing rules yet. Click \"Add Rule\" to add the first one."
   },
   "backup": {
     "title": "Backup",
+    "subtitle": "Manage database backups to ensure data security",
     "totalBackups": "Total Backups",
     "lastBackup": "Last Backup",
     "totalSize": "Total Size",
@@ -241,10 +245,12 @@
     "restoreWarning": "Restoring backup will overwrite all current data. This action cannot be undone.",
     "backupName": "Backup Name (optional)",
     "createdAt": "Created At",
-    "size": "Size"
+    "size": "Size",
+    "noBackups": "No backups yet. Click \"Create Backup\" to start."
   },
   "invoices": {
     "title": "Invoices",
+    "subtitle": "Track guest invoice requests and manage invoice status",
     "pending": "Pending",
     "issuedThisMonth": "Issued This Month",
     "totalAmount": "Total Amount",
@@ -268,10 +274,13 @@
     "specialInvoice": "Special Invoice",
     "markIssued": "Mark Issued",
     "exportList": "Export List",
-    "issuedAt": "Issued At"
+    "issuedAt": "Issued At",
+    "noInvoices": "No invoices yet. Click \"Add Invoice\" to start.",
+    "noFilteredInvoices": "No invoices match the current filter"
   },
   "analytics": {
     "title": "Analytics",
+    "subtitle": "Last 30 days business overview",
     "todayOccupancy": "Today's Occupancy",
     "monthlyRevenue": "Monthly Revenue",
     "monthlyOccupancy": "Monthly Occupancy",

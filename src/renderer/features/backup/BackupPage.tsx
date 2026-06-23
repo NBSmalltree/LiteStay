@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Card, Button, Input, Dialog } from '../../components'
 import type { BackupInfo } from '../../../../shared/types'
 
@@ -14,6 +15,7 @@ const formatTime = (iso: string): string => {
 }
 
 export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
+  const { t } = useTranslation()
   const [backups, setBackups] = useState<BackupInfo[]>([])
   const [loading, setLoading] = useState(false)
   const [customName, setCustomName] = useState('')
@@ -130,8 +132,8 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
   return (
     <div className="p-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">数据备份</h1>
-        <p className="mt-1 text-sm text-gray-500">管理数据库备份文件，保障数据安全</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('backup.title')}</h1>
+        <p className="mt-1 text-sm text-gray-500">{t('backup.subtitle')}</p>
       </div>
 
       {/* Status message */}
@@ -165,18 +167,18 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
       {/* Action buttons */}
       <div className="flex items-center gap-3">
         <Button onClick={() => setShowCreateDialog(true)} disabled={loading}>
-          创建备份
+          {t('backup.createBackup')}
         </Button>
         <Button variant="secondary" onClick={handleImport} disabled={loading}>
-          导入备份
+          {t('backup.import')}
         </Button>
       </div>
 
       {/* Backup list */}
       <Card>
-        <h2 className="text-base font-semibold text-gray-900 mb-4">备份列表</h2>
+        <h2 className="text-base font-semibold text-gray-900 mb-4">{t('backup.title')}</h2>
         {backups.length === 0 ? (
-          <div className="text-center py-10 text-gray-400 text-sm">暂无备份文件，点击"创建备份"开始</div>
+          <div className="text-center py-10 text-gray-400 text-sm">{t('backup.noBackups')}</div>
         ) : (
           <div className="space-y-3">
             {backups.map((backup) => (
@@ -194,7 +196,7 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
                     onClick={() => handleRestore(backup)}
                     disabled={loading}
                   >
-                    恢复
+                    {t('backup.restore')}
                   </Button>
                   <Button
                     variant="ghost"

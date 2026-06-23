@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Card, Button, Input, Select, Dialog } from '../../components'
 import type { GuestWithStats, Guest, GuestOrder } from '../../../shared/types'
 
@@ -22,6 +23,7 @@ type SortField = 'name' | 'order_count' | 'total_spent' | 'last_check_in'
 type SortDir = 'asc' | 'desc'
 
 export default function GuestsPage({ refreshKey }: Props) {
+  const { t } = useTranslation()
   const [guests, setGuests] = useState<GuestWithStats[]>([])
   const [search, setSearch] = useState('')
   const [sortField, setSortField] = useState<SortField>('name')
@@ -149,8 +151,8 @@ export default function GuestsPage({ refreshKey }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">客人管理</h1>
-          <p className="mt-1 text-sm text-gray-500">管理客人档案和历史记录</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('guests.title')}</h1>
+          <p className="mt-1 text-sm text-gray-500">{t('guests.subtitle')}</p>
         </div>
         <Button onClick={handleAddNew}>
           <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -247,7 +249,7 @@ export default function GuestsPage({ refreshKey }: Props) {
                       <button
                         onClick={() => handleViewDetail(guest)}
                         className="p-1.5 rounded text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
-                        title="查看详情"
+                        title={t('guests.viewDetail')}
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
