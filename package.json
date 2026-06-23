@@ -75,11 +75,10 @@
     "mac": {
       "icon": "build/icon.icns",
       "target": [
-        "dmg"
-      ],
-      "arch": [
-        "x64",
-        "arm64"
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
       ],
       "artifactName": "${productName}-${version}-mac.${ext}"
     }
