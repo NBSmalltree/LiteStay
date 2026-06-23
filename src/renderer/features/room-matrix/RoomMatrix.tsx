@@ -74,7 +74,7 @@ export default function RoomMatrix({ onCellClick, onOrderClick }: {
   }
 
   // Build month label with language awareness
-  const monthLabel = i18n.language === 'zh'
+  const monthLabel = i18n.language.startsWith('zh')
     ? `${viewStart.getFullYear()}年${viewStart.getMonth() + 1}月`
     : `${viewStart.toLocaleString('en', { month: 'short' })} ${viewStart.getFullYear()}`
 

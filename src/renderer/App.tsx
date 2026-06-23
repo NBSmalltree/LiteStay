@@ -215,7 +215,7 @@ export default function App() {
   }
 
   const toggleLanguage = () => {
-    const newLang = i18n.language === 'zh' ? 'en' : 'zh'
+    const newLang = i18n.language.startsWith('zh') ? 'en' : 'zh'
     i18n.changeLanguage(newLang)
   }
 
@@ -249,9 +249,9 @@ export default function App() {
           <button
             onClick={toggleLanguage}
             className="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
-            title={i18n.language === 'zh' ? 'Switch to English' : '切换到中文'}
+            title={i18n.language.startsWith('zh') ? 'Switch to English' : '切换到中文'}
           >
-            {i18n.language === 'zh' ? 'EN' : '中'}
+            {i18n.language.startsWith('zh') ? 'EN' : '中'}
           </button>
           <WindowControls />
         </div>
