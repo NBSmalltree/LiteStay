@@ -8,10 +8,11 @@ import FinancePage from './features/finance/FinancePage'
 import AnalyticsPage from './features/analytics/AnalyticsPage'
 import BackupPage from './features/backup/BackupPage'
 import PricingPage from './features/pricing/PricingPage'
+import GuestsPage from './features/guests/GuestsPage'
 import RoomStatusOverview from './features/room-matrix/RoomStatusOverview'
 import type { Room, RoomType, Order } from '../shared/types'
 
-type Page = 'dashboard' | 'rooms' | 'orders' | 'overview' | 'finance' | 'analytics' | 'pricing' | 'backup'
+type Page = 'dashboard' | 'rooms' | 'orders' | 'overview' | 'finance' | 'analytics' | 'pricing' | 'backup' | 'guests'
 
 const navItems: { id: Page; label: string; icon: JSX.Element }[] = [
   {

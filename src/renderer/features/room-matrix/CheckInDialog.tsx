@@ -73,10 +73,50 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
   const nights = useMemo(() => daysBetween(checkInDate, checkOut), [checkInDate, checkOut])
   const basePrice = room ? room.base_price * nights : 0
 
-  // Recalculate base price when nights change
+  // Recalculate price using price rules when nights or dates change
   useEffect(() => {
-    if (room) setActualAmount(String(room.base_price * nights))
-  }, [nights, room])
+    if (!room || !checkInDate || !checkOut || checkOut <= checkInDate) return
+
+    const calculateWithRules = async () => {
+      try {
+        const calendar = await window.electron.db.getPriceCalendar(room.room_type, checkInDate, checkOut)
+        let totalPrice = 0
+        for (const day of calendar) {
+          totalPrice += day.final_price
+        }
+        if (totalPrice > 0) {
+          setActualAmount(String(Math.round(totalPrice * 100) / 100))
+        } else {
+          setActualAmount(String(room.base_price * nights))
+        }
+      } catch {
+        setActualAmount(String(room.base_price * nights))
+      }
+    }
+    calculateWithRules()
+  }, [nights, room, checkInDate, checkOut])
+
+  // Guest search handler with debounce
+  const handleGuestNameChange = (value: string) => {
+    setGuestName(value)
+    clearTimeout(guestSearchDebounce.current)
+    if (value.length >= 2) {
+      guestSearchDebounce.current = setTimeout(async () => {
+        const results = await window.electron.db.searchGuests(value)
+        setGuestSearchResults(results)
+        setShowGuestSearch(results.length > 0)
+      }, 300)
+    } else {
+      setGuestSearchResults([])
+      setShowGuestSearch(false)
+    }
+  }
+
+  const selectGuest = (guest: Guest) => {
+    setGuestName(guest.name)
+    setShowGuestSearch(false)
+    setGuestSearchResults([])
+  }
 
   const handleSave = async () => {
     if (!room) return
@@ -137,7 +177,23 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Input label="客人称呼" id="guest-name" value={guestName} onChange={e => setGuestName(e.target.value)} />
+            <div className="relative" ref={guestSearchContainerRef}>
+              <Input label="客人称呼" id="guest-name" value={guestName} onChange={e => handleGuestNameChange(e.target.value)} />
+              {showGuestSearch && guestSearchResults.length > 0 && (
+                <div className="absolute z-10 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 w-full max-h-40 overflow-auto">
+                  {guestSearchResults.map(guest => (
+                    <div
+                      key={guest.guest_id}
+                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm transition-colors"
+                      onClick={() => selectGuest(guest)}
+                    >
+                      <span className="font-medium text-gray-900">{guest.name}</span>
+                      {guest.phone && <span className="ml-2 text-gray-400">{guest.phone}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-gray-700">入住日期</label>
               <div className="px-3 py-2 text-sm rounded-lg border border-gray-200 bg-gray-50 text-gray-600">
