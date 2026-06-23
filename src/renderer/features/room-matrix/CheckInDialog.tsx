@@ -58,7 +58,7 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
   // Reset form when dialog opens
   useEffect(() => {
     if (open && room) {
-      setGuestName('张先生')
+      setGuestName('')
       setGuestPhone('')
       setCheckOut(addOneDay(checkInDate))
       setActualAmount(String(room.base_price))
@@ -212,7 +212,7 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
                 </div>
               )}
             </div>
-            <Input label="手机号（选填）" id="guest-phone" value={guestPhone} onChange={e => setGuestPhone(e.target.value)} />
+            <Input label={t('checkIn.guestPhone')} id="guest-phone" value={guestPhone} onChange={e => setGuestPhone(e.target.value)} />
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-gray-700">{t('checkIn.checkInDate')}</label>
               <div className="px-3 py-2 text-sm rounded-lg border border-gray-200 bg-gray-50 text-gray-600">

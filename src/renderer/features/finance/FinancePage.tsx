@@ -82,7 +82,7 @@ export default function FinancePage({ refreshKey }: { refreshKey: number }) {
     setExporting(true)
     try {
       const path = await window.electron.db.exportFinancialLogs(resolvedFrom, resolvedTo)
-      if (path) alert(`已导出到：${path}`)
+      if (path) alert(`${t('finance.exportedTo')}：${path}`)
     } finally {
       setExporting(false)
     }
@@ -113,7 +113,7 @@ export default function FinancePage({ refreshKey }: { refreshKey: number }) {
       setShowNightAuditReport(true)
     } catch (e) {
       console.error('[NightAudit] error:', e)
-      alert('夜审数据加载失败，请重试')
+      alert(t('finance.nightAuditLoadFailed'))
     } finally {
       setAuditLoading(false)
     }
@@ -155,10 +155,10 @@ export default function FinancePage({ refreshKey }: { refreshKey: number }) {
     setAuditExporting(true)
     try {
       const path = await window.electron.db.exportNightAudit(auditData)
-      if (path) alert(`夜审报表已导出到：${path}`)
+      if (path) alert(`${t('finance.nightAuditExportedTo')}：${path}`)
     } catch (e) {
       console.error('[NightAudit] export error:', e)
-      alert('导出失败，请重试')
+      alert(t('finance.exportFailed'))
     } finally {
       setAuditExporting(false)
     }

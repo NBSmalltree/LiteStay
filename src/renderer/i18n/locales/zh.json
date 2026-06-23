@@ -11,7 +11,9 @@
     "loading": "加载中...",
     "noData": "暂无数据",
     "yes": "是",
-    "no": "否"
+    "no": "否",
+    "ok": "确定",
+    "info": "提示"
   },
   "nav": {
     "matrix": "房间矩阵",
@@ -233,7 +235,11 @@
     "todayOccupancy": "今日入住率",
     "vacantRooms": "空房",
     "printReport": "打印报表",
-    "rooms": "间"
+    "rooms": "间",
+    "exportedTo": "已导出到",
+    "nightAuditLoadFailed": "夜审数据加载失败，请重试",
+    "nightAuditExportedTo": "夜审报表已导出到",
+    "exportFailed": "导出失败，请重试"
   },
   "guests": {
     "title": "客人管理",
@@ -282,7 +288,9 @@
     "add": "添加",
     "statusInHouse": "在住",
     "statusPrebook": "预订",
-    "statusCheckedOut": "已退房"
+    "statusCheckedOut": "已退房",
+    "hasRelatedOrders": "该客人有关联的订单，无法删除",
+    "deleteFailed": "删除失败"
   },
   "pricing": {
     "title": "房价策略",

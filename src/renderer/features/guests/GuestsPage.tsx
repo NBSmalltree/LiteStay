@@ -104,7 +104,11 @@ export default function GuestsPage({ refreshKey }: Props) {
 
   const handleDelete = async (guestId: number, name: string) => {
     if (!confirm(t('guests.confirmDelete', { name }))) return
-    await window.electron.db.deleteGuest(guestId)
+    const result = await window.electron.db.deleteGuest(guestId)
+    if (result && result.error) {
+      alert(t('guests.hasRelatedOrders'))
+      return
+    }
     setLocalKey(k => k + 1)
   }
 

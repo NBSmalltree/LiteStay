@@ -242,6 +242,7 @@ function registerIpcHandlers() {
 
   ipcMain.handle('db:deleteOrder', (_event, orderId) => {
     getDb().prepare('DELETE FROM financial_logs WHERE order_id = ?').run(orderId);
+    getDb().prepare('DELETE FROM invoices WHERE order_id = ?').run(orderId);
     getDb().prepare('DELETE FROM orders WHERE order_id = ?').run(orderId);
     if (mainWindow) mainWindow.webContents.send('orders:changed');
     return true;
@@ -553,7 +554,7 @@ function registerIpcHandlers() {
         AND o.check_out_date > ?
       GROUP BY r.room_type
       ORDER BY avg_adr DESC
-    `).all(dateTo, dateFrom, dateTo, dateFrom, dateFrom, dateFrom, dateFrom, dateTo, dateFrom, dateFrom, dateFrom, dateTo, dateTo, dateFrom);
+    `).all(dateFrom, dateTo, dateTo, dateFrom, dateTo, dateFrom, dateFrom, dateTo, dateTo, dateFrom, dateTo, dateFrom, dateTo, dateFrom, dateTo, dateFrom);
   });
 
   // Phase 4: Export to Excel
@@ -1085,6 +1086,10 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('db:deleteGuest', (_event, guestId) => {
+    const order = getDb().prepare('SELECT order_id FROM orders WHERE guest_id = ? LIMIT 1').get(guestId);
+    if (order) {
+      return { error: '该客人有关联的订单，无法删除' };
+    }
     getDb().prepare('DELETE FROM guests WHERE guest_id = ?').run(guestId);
     return true;
   });
@@ -1100,13 +1105,13 @@ function registerIpcHandlers() {
           SELECT r2.room_type
           FROM orders o2
           JOIN rooms r2 ON o2.room_id = r2.room_id
-          WHERE o2.guest_name = g.name
+          WHERE o2.guest_id = g.guest_id
           GROUP BY r2.room_type
           ORDER BY COUNT(*) DESC
           LIMIT 1
         ) as preferred_room_type
       FROM guests g
-      LEFT JOIN orders o ON o.guest_name = g.name
+      LEFT JOIN orders o ON o.guest_id = g.guest_id
       GROUP BY g.guest_id
       ORDER BY g.name
     `).all();

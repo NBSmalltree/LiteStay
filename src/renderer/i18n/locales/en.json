@@ -11,7 +11,9 @@
     "loading": "Loading...",
     "noData": "No data",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "ok": "OK",
+    "info": "Info"
   },
   "nav": {
     "matrix": "Room Matrix",
@@ -233,7 +235,11 @@
     "todayOccupancy": "Today's Occupancy",
     "vacantRooms": "Vacant Rooms",
     "printReport": "Print Report",
-    "rooms": "rooms"
+    "rooms": "rooms",
+    "exportedTo": "Exported to",
+    "nightAuditLoadFailed": "Failed to load night audit data, please retry",
+    "nightAuditExportedTo": "Night audit report exported to",
+    "exportFailed": "Export failed, please retry"
   },
   "guests": {
     "title": "Guests",
@@ -282,7 +288,9 @@
     "add": "Add",
     "statusInHouse": "In House",
     "statusPrebook": "Reserved",
-    "statusCheckedOut": "Checked Out"
+    "statusCheckedOut": "Checked Out",
+    "hasRelatedOrders": "This guest has related orders and cannot be deleted",
+    "deleteFailed": "Delete failed"
   },
   "pricing": {
     "title": "Pricing",

@@ -315,23 +315,6 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
 
   if (!order || !room) return null
 
-  const footer = (
-    <div className="flex justify-between items-center">
-      <Button
-        variant="ghost"
-        className={confirmDelete ? 'text-red-600 hover:bg-red-50' : 'text-red-400 hover:text-red-600'}
-        onClick={handleDelete}
-        disabled={saving}
-      >
-        {confirmDelete ? t('orderDetail.actions.confirmDelete') : t('orderDetail.actions.deleteOrder')}
-      </Button>
-      <div className="flex gap-3">
-        <Button variant="secondary" onClick={onClose}>{t('orderDetail.actions.cancel')}</Button>
-        <Button onClick={handleSave} disabled={saving}>{saving ? t('orderDetail.actions.saving') : t('orderDetail.actions.saveChanges')}</Button>
-      </div>
-    </div>
-  )
-
   return (
     <Dialog open={open} onClose={onClose} title={t('orderDetail.title')} maxWidth="md">
       <div className="flex flex-col gap-3" style={{ maxHeight: 'calc(90vh - 160px)' }}>
