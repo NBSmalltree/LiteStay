@@ -162,6 +162,7 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
         const room = roomMap.get(order.room_id)
         return (
           order.guest_name?.toLowerCase().includes(q) ||
+          order.guest_phone?.toLowerCase().includes(q) ||
           room?.room_number?.toLowerCase().includes(q) ||
           order.check_in_date?.includes(q) ||
           order.check_out_date?.includes(q)
@@ -464,7 +465,12 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
                       <span className="font-medium text-gray-900">{room?.room_number ?? '?'}</span>
                       <span className="ml-1.5 text-xs text-gray-400">{room?.room_type}</span>
                     </td>
-                    <td className="px-4 py-3 text-gray-900">{order.guest_name}</td>
+                    <td className="px-4 py-3">
+                      <div className="text-gray-900">{order.guest_name}</div>
+                      {order.guest_phone && (
+                        <div className="text-xs text-gray-400 mt-0.5">{order.guest_phone}</div>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-gray-600">{order.check_in_date}</td>
                     <td className="px-4 py-3 text-gray-600">{order.check_out_date}</td>
                     <td className="px-4 py-3">

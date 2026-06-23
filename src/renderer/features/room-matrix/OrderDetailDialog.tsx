@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { Dialog, Input, Select, Button } from '../../components'
 import type { Order, Room, FinancialLog } from '../../../shared/types'
+import { SOURCE_LABELS } from '../../../shared/types'
 
 interface Props {
   open: boolean
@@ -25,14 +26,24 @@ const PAYMENT_METHODS = [
 
 const METHOD_LABEL: Record<string, string> = { WeChat: '微信', Alipay: '支付宝', Cash: '现金' }
 
+const SOURCE_OPTIONS = [
+  { value: 'direct', label: '直接预订' },
+  { value: 'ctrip', label: '携程' },
+  { value: 'meituan', label: '美团' },
+  { value: 'returning', label: '回头客' },
+  { value: 'other', label: '其他' },
+]
+
 export default function OrderDetailDialog({ open, order, room, onClose, onSaved, onDeleted }: Props) {
   const [guestName, setGuestName] = useState('')
+  const [guestPhone, setGuestPhone] = useState('')
   const [checkInDate, setCheckInDate] = useState('')
   const [checkOutDate, setCheckOutDate] = useState('')
   const [actualAmount, setActualAmount] = useState('')
   const [deposit, setDeposit] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('WeChat')
   const [notes, setNotes] = useState('')
+  const [source, setSource] = useState('direct')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -46,6 +57,13 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
   const [editingLogId, setEditingLogId] = useState<number | null>(null)
   const [editAmount, setEditAmount] = useState('')
   const [editMethod, setEditMethod] = useState('WeChat')
+
+  // Invoice form state
+  const [showInvoiceForm, setShowInvoiceForm] = useState(false)
+  const [invoiceTitle, setInvoiceTitle] = useState('')
+  const [invoiceTaxNumber, setInvoiceTaxNumber] = useState('')
+  const [invoiceType, setInvoiceType] = useState<'normal' | 'special'>('normal')
+  const [invoiceSaving, setInvoiceSaving] = useState(false)
 
   // Room-change state
   const [allRooms, setAllRooms] = useState<Room[]>([])
@@ -71,11 +89,13 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
     if (open && order) {
       initRef.current = true
       setGuestName(order.guest_name)
+      setGuestPhone(order.guest_phone || '')
       setCheckInDate(order.check_in_date)
       setCheckOutDate(order.check_out_date)
       setActualAmount(String(order.actual_amount))
       setDeposit(String(order.deposit))
       setNotes(order.notes || '')
+      setSource(order.source || 'direct')
       setError('')
       setConfirmDelete(false)
       setShowIncidental(false)
@@ -86,6 +106,10 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
       setTargetRoomId(null)
       setShowPriceChangeConfirm(false)
       setPendingRoomChange(null)
+      setShowInvoiceForm(false)
+      setInvoiceTitle('')
+      setInvoiceTaxNumber('')
+      setInvoiceType('normal')
       loadLogs(order.order_id)
       // Load all rooms for room-change feature
       window.electron.db.getRooms().then((rooms: any) => setAllRooms(rooms))
@@ -104,15 +128,30 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
     if (!order) return
     setError('')
     if (!guestName.trim()) { setError('请输入客人称呼'); return }
+
+    // 验证手机号格式（如果填写了）
+    if (guestPhone.trim() && !/^1[3-9]\d{9}$/.test(guestPhone.trim())) {
+      setError('请输入正确的手机号')
+      return
+    }
+
     setSaving(true)
     try {
+      // 查找或创建客人
+      const guest = await window.electron.db.findOrCreateGuest({
+        name: guestName.trim(),
+        phone: guestPhone.trim() || undefined,
+      })
+
       await window.electron.db.updateOrder(order.order_id, {
+        guest_id: guest.guest_id,
         guest_name: guestName.trim(),
         check_in_date: checkInDate,
         check_out_date: checkOutDate,
         actual_amount: Number(actualAmount),
         deposit: Number(deposit),
         notes: notes.trim() || undefined,
+        source,
       })
       await window.electron.db.updateFinancialLogPayment(order.order_id, paymentMethod)
       await window.electron.db.updateFinancialLogAmount(order.order_id, 'ROOM_FEE', Number(actualAmount))
@@ -248,6 +287,29 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
       setError(e?.message || '换房失败')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleApplyInvoice = async () => {
+    if (!order) return
+    if (!invoiceTitle.trim()) return
+    setInvoiceSaving(true)
+    try {
+      await (window.electron.db.insertInvoice({
+        order_id: order.order_id,
+        title: invoiceTitle.trim(),
+        tax_number: invoiceTaxNumber || undefined,
+        invoice_type: invoiceType,
+      }) as any)
+      setShowInvoiceForm(false)
+      setInvoiceTitle('')
+      setInvoiceTaxNumber('')
+      setInvoiceType('normal')
+      alert('发票申请已提交')
+    } catch (e: any) {
+      alert(e?.message || '申请失败')
+    } finally {
+      setInvoiceSaving(false)
     }
   }
 
@@ -419,12 +481,20 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
         </div>
 
         {/* Editable fields */}
-        <Input label="客人称呼" id="edit-guest" value={guestName} onChange={e => setGuestName(e.target.value)} />
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="客人称呼" id="edit-guest" value={guestName} onChange={e => setGuestName(e.target.value)} />
+          <Input label="手机号（选填）" id="edit-guest-phone" value={guestPhone} onChange={e => setGuestPhone(e.target.value)} />
+        </div>
         <div className="grid grid-cols-3 gap-4">
           <Input label="实际房费" id="edit-amount" type="number" value={actualAmount} onChange={e => setActualAmount(e.target.value)} />
           <Input label="押金" id="edit-deposit" type="number" value={deposit} onChange={e => setDeposit(e.target.value)} />
           <Select label="支付方式" id="edit-payment" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
             {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </Select>
+        </div>
+        <div className="grid grid-cols-1 gap-4">
+          <Select label="客人来源" id="edit-source" value={source || 'direct'} onChange={e => setSource(e.target.value)}>
+            {SOURCE_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </Select>
         </div>
 
@@ -442,6 +512,64 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
               focus:border-primary-500 transition-colors resize-none"
           />
         </div>
+
+        {/* Invoice application section */}
+        {order.status !== 'CHECKED_OUT' && (
+          <div className="space-y-2">
+            {!showInvoiceForm ? (
+              <button
+                onClick={() => {
+                  setShowInvoiceForm(true)
+                  setInvoiceTitle(guestName)
+                }}
+                className="text-xs text-primary-600 hover:text-primary-700 hover:underline"
+              >
+                + 申请发票
+              </button>
+            ) : (
+              <div className="p-3 bg-blue-50 rounded-lg space-y-3">
+                <h4 className="text-sm font-medium text-blue-800">发票信息</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="发票抬头 *"
+                    value={invoiceTitle}
+                    onChange={e => setInvoiceTitle(e.target.value)}
+                    placeholder="公司名称或个人姓名"
+                  />
+                  <Input
+                    label="税号"
+                    value={invoiceTaxNumber}
+                    onChange={e => setInvoiceTaxNumber(e.target.value)}
+                    placeholder="纳税人识别号"
+                  />
+                </div>
+                <Select
+                  label="发票类型"
+                  value={invoiceType}
+                  onChange={e => setInvoiceType(e.target.value as 'normal' | 'special')}
+                >
+                  <option value="normal">普通发票</option>
+                  <option value="special">专用发票</option>
+                </Select>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleApplyInvoice}
+                    disabled={invoiceSaving || !invoiceTitle.trim()}
+                    className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {invoiceSaving ? '提交中...' : '提交申请'}
+                  </button>
+                  <button
+                    onClick={() => setShowInvoiceForm(false)}
+                    className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 

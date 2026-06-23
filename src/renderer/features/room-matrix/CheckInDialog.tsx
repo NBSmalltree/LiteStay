@@ -16,6 +16,14 @@ const PAYMENT_METHODS = [
   { value: 'Cash', label: '现金' },
 ]
 
+const SOURCE_OPTIONS = [
+  { value: 'direct', label: '直接预订' },
+  { value: 'ctrip', label: '携程' },
+  { value: 'meituan', label: '美团' },
+  { value: 'returning', label: '回头客' },
+  { value: 'other', label: '其他' },
+]
+
 function addOneDay(dateStr: string): string {
   const d = new Date(dateStr)
   d.setDate(d.getDate() + 1)
@@ -29,10 +37,12 @@ function daysBetween(a: string, b: string): number {
 
 export default function CheckInDialog({ open, room, checkInDate, onClose, onSaved }: Props) {
   const [guestName, setGuestName] = useState('')
+  const [guestPhone, setGuestPhone] = useState('')
   const [checkOut, setCheckOut] = useState('')
   const [actualAmount, setActualAmount] = useState('')
   const [deposit, setDeposit] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('WeChat')
+  const [source, setSource] = useState('direct')
   const [notes, setNotes] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -47,10 +57,12 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
   useEffect(() => {
     if (open && room) {
       setGuestName('张先生')
+      setGuestPhone('')
       setCheckOut(addOneDay(checkInDate))
       setActualAmount(String(room.base_price))
       setDeposit('0')
       setPaymentMethod('WeChat')
+      setSource('direct')
       setNotes('')
       setError('')
       setGuestSearchResults([])
@@ -114,6 +126,7 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
 
   const selectGuest = (guest: Guest) => {
     setGuestName(guest.name)
+    setGuestPhone(guest.phone || '')
     setShowGuestSearch(false)
     setGuestSearchResults([])
   }
@@ -124,11 +137,24 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
     if (!guestName.trim()) { setError('请输入客人称呼'); return }
     if (checkOut <= checkInDate) { setError('退房日期必须晚于入住日期'); return }
 
+    // 验证手机号格式（如果填写了）
+    if (guestPhone.trim() && !/^1[3-9]\d{9}$/.test(guestPhone.trim())) {
+      setError('请输入正确的手机号')
+      return
+    }
+
     setSaving(true)
     try {
+      // 查找或创建客人
+      const guest = await window.electron.db.findOrCreateGuest({
+        name: guestName.trim(),
+        phone: guestPhone.trim() || undefined,
+      })
+
       const isFuture = checkInDate > new Date().toISOString().split('T')[0]
       const order = await window.electron.db.insertOrder({
         room_id: room.room_id,
+        guest_id: guest.guest_id,
         guest_name: guestName.trim(),
         check_in_date: checkInDate,
         check_out_date: checkOut,
@@ -136,6 +162,7 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
         deposit: Number(deposit),
         status: isFuture ? 'PREBOOK' : 'IN_HOUSE',
         notes: notes.trim() || undefined,
+        source,
       })
 
       // Log room fee
@@ -194,6 +221,7 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
                 </div>
               )}
             </div>
+            <Input label="手机号（选填）" id="guest-phone" value={guestPhone} onChange={e => setGuestPhone(e.target.value)} />
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-gray-700">入住日期</label>
               <div className="px-3 py-2 text-sm rounded-lg border border-gray-200 bg-gray-50 text-gray-600">
@@ -221,24 +249,31 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
           </div>
 
           {/* Payment row */}
-          <div className="grid grid-cols-3 gap-4">
-            <Input
-              label="实际房费"
-              id="actual-amount"
-              type="number"
-              value={actualAmount}
-              onChange={e => setActualAmount(e.target.value)}
-            />
-            <Input
-              label="押金"
-              id="deposit"
-              type="number"
-              value={deposit}
-              onChange={e => setDeposit(e.target.value)}
-            />
-            <Select label="支付方式" id="payment-method" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
-              {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="实际房费"
+                id="actual-amount"
+                type="number"
+                value={actualAmount}
+                onChange={e => setActualAmount(e.target.value)}
+              />
+              <Input
+                label="押金"
+                id="deposit"
+                type="number"
+                value={deposit}
+                onChange={e => setDeposit(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Select label="支付方式" id="payment-method" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
+                {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </Select>
+              <Select label="客人来源" id="source" value={source} onChange={e => setSource(e.target.value)}>
+                {SOURCE_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </Select>
+            </div>
           </div>
 
           {/* Notes */}

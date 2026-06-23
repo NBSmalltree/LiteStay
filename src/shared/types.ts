@@ -14,13 +14,18 @@ export interface Room {
 export interface Order {
   order_id: number
   room_id: number
+  guest_id?: number
   guest_name: string
+  guest_phone?: string
+  guest_id_card?: string
+  guest_email?: string
   check_in_date: string
   check_out_date: string
   actual_amount: number
   deposit: number
   status: 'PREBOOK' | 'IN_HOUSE' | 'CHECKED_OUT'
   notes?: string
+  source?: string
 }
 
 export interface FinancialLog {
@@ -151,6 +156,52 @@ export interface PaymentMethodTrend {
   total: number
 }
 
+export interface SourceStat {
+  source: string
+  order_count: number
+  total_revenue: number
+  avg_revenue: number
+}
+
+export interface SourceTrend {
+  month: string
+  source: string
+  order_count: number
+  total_revenue: number
+}
+
+export interface ADRRevPARData {
+  adr: number
+  revpar: number
+  total_room_fee: number
+  sold_room_nights: number
+  available_room_nights: number
+  occupancy_rate: number
+}
+
+export interface ADRRevPARTrend {
+  date: string
+  adr: number
+  revpar: number
+  occupancy_rate: number
+}
+
+export interface ADRByRoomType {
+  room_type: string
+  order_count: number
+  total_revenue: number
+  total_nights: number
+  avg_adr: number
+}
+
+export const SOURCE_LABELS: Record<string, string> = {
+  ctrip: '携程',
+  meituan: '美团',
+  direct: '直接预订',
+  returning: '回头客',
+  other: '其他',
+}
+
 export interface Guest {
   guest_id: number
   name: string
@@ -181,6 +232,30 @@ export interface GuestOrder {
   notes?: string
   room_number: string
   room_type: string
+}
+
+export interface Invoice {
+  invoice_id: number
+  order_id: number
+  title: string
+  tax_number?: string
+  company_address?: string
+  phone?: string
+  bank_name?: string
+  bank_account?: string
+  invoice_type: 'normal' | 'special'
+  status: 'pending' | 'issued' | 'cancelled'
+  issued_at?: string
+  notes?: string
+  created_at: string
+}
+
+export interface InvoiceWithOrder extends Invoice {
+  guest_name: string
+  room_number: string
+  check_in_date: string
+  check_out_date: string
+  actual_amount: number
 }
 
 export interface ElectronAPI {
@@ -233,9 +308,12 @@ export interface ElectronAPI {
     deletePriceRule(ruleId: number): Promise<boolean>
     getPriceCalendar(roomType: string, dateFrom: string, dateTo: string): Promise<PriceCalendar[]>
     getGuests(): Guest[]
+    getGuestById(guestId: number): Promise<Guest | undefined>
+    getGuestByPhone(phone: string): Promise<Guest | undefined>
     insertGuest(guest: Pick<Guest, 'name'> & Partial<Pick<Guest, 'phone' | 'id_card' | 'email' | 'notes'>>): Guest
     updateGuest(guestId: number, updates: Partial<Pick<Guest, 'name' | 'phone' | 'id_card' | 'email' | 'notes'>>): Guest
     deleteGuest(guestId: number): boolean
+    findOrCreateGuest(guestData: {name: string; phone?: string; id_card?: string; email?: string; notes?: string}): Promise<Guest>
     getGuestsWithStats(): GuestWithStats[]
     searchGuests(query: string): Guest[]
     getGuestOrders(guestName: string): GuestOrder[]
@@ -244,6 +322,18 @@ export interface ElectronAPI {
     getYearlyRevenue(): Promise<YearlyRevenue[]>
     getRevenueGrowth(): Promise<RevenueGrowth>
     getPaymentMethodTrend(months: number): Promise<PaymentMethodTrend[]>
+    getSourceStats(dateFrom: string, dateTo: string): Promise<SourceStat[]>
+    getSourceTrend(months: number): Promise<SourceTrend[]>
+    updateOrderSource(orderId: number, source: string): Promise<boolean>
+    getADRRevPAR(dateFrom: string, dateTo: string): Promise<ADRRevPARData>
+    getADRRevPARTrend(days: number): Promise<ADRRevPARTrend[]>
+    getADRByRoomType(dateFrom: string, dateTo: string): Promise<ADRByRoomType[]>
+    getInvoices(): Promise<InvoiceWithOrder[]>
+    insertInvoice(invoice: Omit<Invoice, 'invoice_id' | 'status' | 'issued_at' | 'created_at'>): Promise<Invoice>
+    updateInvoice(invoiceId: number, updates: Partial<Omit<Invoice, 'invoice_id' | 'created_at'>>): Promise<Invoice>
+    deleteInvoice(invoiceId: number): Promise<boolean>
+    markInvoiceIssued(invoiceId: number): Promise<Invoice>
+    exportInvoiceList(status: string): Promise<string | null>
   }
 }
 

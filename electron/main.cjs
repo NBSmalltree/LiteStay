@@ -79,6 +79,22 @@ function initTables(database) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+    CREATE TABLE IF NOT EXISTS invoices (
+      invoice_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER,
+      title TEXT NOT NULL,
+      tax_number TEXT,
+      company_address TEXT,
+      phone TEXT,
+      bank_name TEXT,
+      bank_account TEXT,
+      invoice_type TEXT DEFAULT 'normal',
+      status TEXT DEFAULT 'pending',
+      issued_at DATETIME,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(order_id) REFERENCES orders(order_id)
+    );
   `);
 
   // Seed default room types if empty
@@ -94,6 +110,20 @@ function initTables(database) {
     database.prepare('SELECT notes FROM orders LIMIT 1').get();
   } catch (e) {
     database.exec('ALTER TABLE orders ADD COLUMN notes TEXT');
+  }
+
+  // Migration: add source column to orders if missing
+  try {
+    database.prepare('SELECT source FROM orders LIMIT 1').get();
+  } catch (e) {
+    database.exec('ALTER TABLE orders ADD COLUMN source TEXT DEFAULT "direct"');
+  }
+
+  // Migration: add guest_id column to orders if missing
+  try {
+    database.prepare('SELECT guest_id FROM orders LIMIT 1').get();
+  } catch (e) {
+    database.exec('ALTER TABLE orders ADD COLUMN guest_id INTEGER REFERENCES guests(guest_id)');
   }
 }
 
@@ -180,17 +210,22 @@ function registerIpcHandlers() {
   // Orders
   ipcMain.handle('db:insertOrder', (_event, order) => {
     const stmt = getDb().prepare(
-      'INSERT INTO orders (room_id, guest_name, check_in_date, check_out_date, actual_amount, deposit, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO orders (room_id, guest_id, guest_name, check_in_date, check_out_date, actual_amount, deposit, status, notes, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     const result = stmt.run(
-      order.room_id, order.guest_name, order.check_in_date,
-      order.check_out_date, order.actual_amount, order.deposit, order.status, order.notes || null
+      order.room_id, order.guest_id || null, order.guest_name, order.check_in_date,
+      order.check_out_date, order.actual_amount, order.deposit, order.status, order.notes || null, order.source || 'direct'
     );
     return getDb().prepare('SELECT * FROM orders WHERE order_id = ?').get(result.lastInsertRowid);
   });
 
   ipcMain.handle('db:getOrders', () => {
-    return getDb().prepare('SELECT * FROM orders ORDER BY check_in_date DESC').all();
+    return getDb().prepare(`
+      SELECT o.*, g.phone as guest_phone, g.id_card as guest_id_card, g.email as guest_email
+      FROM orders o
+      LEFT JOIN guests g ON o.guest_id = g.guest_id
+      ORDER BY o.check_in_date DESC
+    `).all();
   });
 
   ipcMain.handle('db:updateOrder', (_event, orderId, updates) => {
@@ -400,6 +435,125 @@ function registerIpcHandlers() {
       GROUP BY r.room_type
       ORDER BY revenue DESC
     `).all(dateFrom, dateTo);
+  });
+
+  // Analytics: ADR and RevPAR metrics
+  ipcMain.handle('db:getADRRevPAR', (_event, dateFrom, dateTo) => {
+    const db = getDb();
+    const totalRooms = db.prepare('SELECT COUNT(*) as c FROM rooms').get().c;
+
+    // Sold room-nights (sum of occupied nights in range)
+    const soldRoomNights = db.prepare(`
+      SELECT SUM(
+        CASE
+          WHEN check_in_date < ? AND check_out_date > ? THEN julianday(?, 'start of day') - julianday(?, 'start of day')
+          WHEN check_in_date >= ? AND check_out_date > ? THEN julianday(?, 'start of day') - julianday(check_in_date, 'start of day')
+          ELSE julianday(check_out_date, 'start of day') - julianday(check_in_date, 'start of day')
+        END
+      ) as nights
+      FROM orders
+      WHERE status != 'CANCELLED'
+        AND check_in_date < ?
+        AND check_out_date > ?
+    `).get(dateTo, dateFrom, dateTo, dateFrom, dateFrom, dateFrom, dateFrom, dateTo, dateFrom);
+
+    // Total room fee revenue
+    const totalRoomFee = db.prepare(`
+      SELECT SUM(amount) as total
+      FROM financial_logs
+      WHERE type = 'ROOM_FEE'
+        AND DATE(created_at) BETWEEN ? AND ?
+    `).get(dateFrom, dateTo);
+
+    const nights = soldRoomNights?.nights || 0;
+    const roomFee = totalRoomFee?.total || 0;
+    const daysInRange = Math.max(1, Math.ceil((new Date(dateTo).getTime() - new Date(dateFrom).getTime()) / 86400000));
+    const availableRoomNights = totalRooms * daysInRange;
+
+    return {
+      adr: nights > 0 ? Math.round(roomFee / nights * 100) / 100 : 0,
+      revpar: availableRoomNights > 0 ? Math.round(roomFee / availableRoomNights * 100) / 100 : 0,
+      total_room_fee: roomFee,
+      sold_room_nights: Math.round(nights),
+      available_room_nights: availableRoomNights,
+      occupancy_rate: availableRoomNights > 0 ? Math.round(nights / availableRoomNights * 10000) / 100 : 0
+    };
+  });
+
+  // Analytics: ADR/RevPAR trend (past N days)
+  ipcMain.handle('db:getADRRevPARTrend', (_event, days) => {
+    const db = getDb();
+    const totalRooms = db.prepare('SELECT COUNT(*) as c FROM rooms').get().c;
+
+    const result = [];
+    const endDate = new Date();
+
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(endDate);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().slice(0, 10);
+
+      // Occupied rooms on that day
+      const occupied = db.prepare(`
+        SELECT COUNT(DISTINCT room_id) as c
+        FROM orders
+        WHERE status = 'IN_HOUSE'
+          AND check_in_date <= ?
+          AND check_out_date > ?
+      `).get(dateStr, dateStr);
+
+      // Room fee on that day
+      const roomFee = db.prepare(`
+        SELECT SUM(amount) as total
+        FROM financial_logs
+        WHERE type = 'ROOM_FEE'
+          AND DATE(created_at) = ?
+      `).get(dateStr);
+
+      const occupiedCount = occupied?.c || 0;
+      const fee = roomFee?.total || 0;
+
+      result.push({
+        date: `${d.getMonth() + 1}/${d.getDate()}`,
+        adr: occupiedCount > 0 ? Math.round(fee / occupiedCount * 100) / 100 : 0,
+        revpar: totalRooms > 0 ? Math.round(fee / totalRooms * 100) / 100 : 0,
+        occupancy_rate: totalRooms > 0 ? Math.round(occupiedCount / totalRooms * 10000) / 100 : 0
+      });
+    }
+
+    return result;
+  });
+
+  // Analytics: ADR breakdown by room type
+  ipcMain.handle('db:getADRByRoomType', (_event, dateFrom, dateTo) => {
+    const db = getDb();
+    return db.prepare(`
+      SELECT
+        r.room_type,
+        COUNT(DISTINCT o.order_id) as order_count,
+        SUM(o.actual_amount) as total_revenue,
+        SUM(
+          CASE
+            WHEN o.check_in_date < ? AND o.check_out_date > ? THEN julianday(?, 'start of day') - julianday(?, 'start of day')
+            WHEN o.check_in_date >= ? AND o.check_out_date > ? THEN julianday(?, 'start of day') - julianday(o.check_in_date, 'start of day')
+            ELSE julianday(o.check_out_date, 'start of day') - julianday(o.check_in_date, 'start of day')
+          END
+        ) as total_nights,
+        AVG(o.actual_amount /
+          CASE
+            WHEN o.check_in_date < ? AND o.check_out_date > ? THEN julianday(?, 'start of day') - julianday(?, 'start of day')
+            WHEN o.check_in_date >= ? AND o.check_out_date > ? THEN julianday(?, 'start of day') - julianday(o.check_in_date, 'start of day')
+            ELSE julianday(o.check_out_date, 'start of day') - julianday(o.check_in_date, 'start of day')
+          END
+        ) as avg_adr
+      FROM orders o
+      JOIN rooms r ON o.room_id = r.room_id
+      WHERE o.status != 'CANCELLED'
+        AND o.check_in_date < ?
+        AND o.check_out_date > ?
+      GROUP BY r.room_type
+      ORDER BY avg_adr DESC
+    `).all(dateTo, dateFrom, dateTo, dateFrom, dateFrom, dateFrom, dateFrom, dateTo, dateFrom, dateFrom, dateFrom, dateTo, dateTo, dateFrom);
   });
 
   // Phase 4: Export to Excel
@@ -644,6 +798,42 @@ function registerIpcHandlers() {
     `).all(months);
   });
 
+  // Source Analytics: get source stats for date range
+  ipcMain.handle('db:getSourceStats', (_event, dateFrom, dateTo) => {
+    return getDb().prepare(`
+      SELECT
+        COALESCE(source, 'direct') as source,
+        COUNT(*) as order_count,
+        SUM(actual_amount) as total_revenue,
+        AVG(actual_amount) as avg_revenue
+      FROM orders
+      WHERE check_in_date BETWEEN ? AND ?
+      GROUP BY source
+      ORDER BY order_count DESC
+    `).all(dateFrom, dateTo);
+  });
+
+  // Source Analytics: get source trend by month
+  ipcMain.handle('db:getSourceTrend', (_event, months) => {
+    return getDb().prepare(`
+      SELECT
+        strftime('%Y-%m', check_in_date) as month,
+        COALESCE(source, 'direct') as source,
+        COUNT(*) as order_count,
+        SUM(actual_amount) as total_revenue
+      FROM orders
+      WHERE check_in_date >= date('now', '-' || ? || ' months')
+      GROUP BY month, source
+      ORDER BY month, source
+    `).all(months);
+  });
+
+  // Source Analytics: update order source
+  ipcMain.handle('db:updateOrderSource', (_event, orderId, source) => {
+    getDb().prepare('UPDATE orders SET source = ? WHERE order_id = ?').run(source, orderId);
+    return true;
+  });
+
   // Price Rules
   ipcMain.handle('db:getPriceRules', () => {
     return getDb().prepare('SELECT * FROM price_rules ORDER BY room_type, priority DESC').all();
@@ -743,9 +933,134 @@ function registerIpcHandlers() {
     return calendar;
   });
 
+  // Invoices
+  ipcMain.handle('db:getInvoices', () => {
+    return getDb().prepare(`
+      SELECT i.*, o.guest_name, r.room_number, o.check_in_date, o.check_out_date, o.actual_amount
+      FROM invoices i
+      JOIN orders o ON i.order_id = o.order_id
+      JOIN rooms r ON o.room_id = r.room_id
+      ORDER BY i.created_at DESC
+    `).all();
+  });
+
+  ipcMain.handle('db:insertInvoice', (_event, invoice) => {
+    const stmt = getDb().prepare(`
+      INSERT INTO invoices (order_id, title, tax_number, company_address, phone,
+        bank_name, bank_account, invoice_type, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(
+      invoice.order_id, invoice.title, invoice.tax_number || null,
+      invoice.company_address || null, invoice.phone || null,
+      invoice.bank_name || null, invoice.bank_account || null,
+      invoice.invoice_type || 'normal', invoice.notes || null
+    );
+    return getDb().prepare('SELECT * FROM invoices WHERE invoice_id = ?').get(result.lastInsertRowid);
+  });
+
+  ipcMain.handle('db:updateInvoice', (_event, invoiceId, updates) => {
+    const fields = [];
+    const values = [];
+    for (const [key, val] of Object.entries(updates)) {
+      fields.push(`${key} = ?`);
+      values.push(val);
+    }
+    values.push(invoiceId);
+    getDb().prepare(`UPDATE invoices SET ${fields.join(', ')} WHERE invoice_id = ?`).run(...values);
+    return getDb().prepare('SELECT * FROM invoices WHERE invoice_id = ?').get(invoiceId);
+  });
+
+  ipcMain.handle('db:deleteInvoice', (_event, invoiceId) => {
+    getDb().prepare('DELETE FROM invoices WHERE invoice_id = ?').run(invoiceId);
+    return true;
+  });
+
+  ipcMain.handle('db:markInvoiceIssued', (_event, invoiceId) => {
+    getDb().prepare(`
+      UPDATE invoices SET status = 'issued', issued_at = datetime('now')
+      WHERE invoice_id = ?
+    `).run(invoiceId);
+    return getDb().prepare('SELECT * FROM invoices WHERE invoice_id = ?').get(invoiceId);
+  });
+
+  ipcMain.handle('db:exportInvoiceList', async (_event, status) => {
+    const ExcelJS = require('exceljs');
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      title: '导出发票清单',
+      defaultPath: `发票清单_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      filters: [{ name: 'Excel 文件', extensions: ['xlsx'] }],
+    });
+    if (canceled || !filePath) return null;
+
+    let invoices;
+    if (status !== 'all') {
+      invoices = getDb().prepare(`
+        SELECT i.*, o.guest_name, r.room_number, o.check_in_date, o.check_out_date, o.actual_amount
+        FROM invoices i
+        JOIN orders o ON i.order_id = o.order_id
+        JOIN rooms r ON o.room_id = r.room_id
+        WHERE i.status = ?
+        ORDER BY i.created_at DESC
+      `).all(status);
+    } else {
+      invoices = getDb().prepare(`
+        SELECT i.*, o.guest_name, r.room_number, o.check_in_date, o.check_out_date, o.actual_amount
+        FROM invoices i
+        JOIN orders o ON i.order_id = o.order_id
+        JOIN rooms r ON o.room_id = r.room_id
+        ORDER BY i.created_at DESC
+      `).all();
+    }
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('发票清单');
+    ws.columns = [
+      { header: '发票编号', key: 'invoice_id', width: 10 },
+      { header: '状态', key: 'status', width: 10 },
+      { header: '发票抬头', key: 'title', width: 30 },
+      { header: '税号', key: 'tax_number', width: 20 },
+      { header: '客人', key: 'guest_name', width: 15 },
+      { header: '房号', key: 'room_number', width: 10 },
+      { header: '入住日期', key: 'check_in_date', width: 15 },
+      { header: '退房日期', key: 'check_out_date', width: 15 },
+      { header: '金额', key: 'actual_amount', width: 12 },
+      { header: '发票类型', key: 'invoice_type', width: 10 },
+      { header: '开票时间', key: 'issued_at', width: 20 },
+    ];
+
+    const statusMap = { issued: '已开票', pending: '待开票', cancelled: '已取消' };
+    const typeMap = { special: '专票', normal: '普票' };
+    for (const inv of invoices) {
+      ws.addRow({
+        ...inv,
+        status: statusMap[inv.status] || inv.status,
+        invoice_type: typeMap[inv.invoice_type] || inv.invoice_type,
+      });
+    }
+
+    ws.getRow(1).font = { bold: true };
+    ws.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFD9E1F2' },
+    };
+
+    await wb.xlsx.writeFile(filePath);
+    return filePath;
+  });
+
   // Guests
   ipcMain.handle('db:getGuests', () => {
     return getDb().prepare('SELECT * FROM guests ORDER BY name').all();
+  });
+
+  ipcMain.handle('db:getGuestById', (_event, guestId) => {
+    return getDb().prepare('SELECT * FROM guests WHERE guest_id = ?').get(guestId);
+  });
+
+  ipcMain.handle('db:getGuestByPhone', (_event, phone) => {
+    return getDb().prepare('SELECT * FROM guests WHERE phone = ?').get(phone);
   });
 
   ipcMain.handle('db:insertGuest', (_event, guest) => {
@@ -814,6 +1129,33 @@ function registerIpcHandlers() {
       WHERE o.guest_name = ?
       ORDER BY o.check_in_date DESC
     `).all(guestName);
+  });
+
+  ipcMain.handle('db:findOrCreateGuest', (_event, guestData) => {
+    const db = getDb();
+
+    // 如果有手机号，尝试查找现有客人
+    if (guestData.phone) {
+      const existing = db.prepare('SELECT * FROM guests WHERE phone = ?').get(guestData.phone);
+      if (existing) {
+        // 更新客人信息（如果有新信息）
+        if (guestData.name && guestData.name !== existing.name) {
+          db.prepare('UPDATE guests SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE guest_id = ?')
+            .run(guestData.name, existing.guest_id);
+        }
+        return existing;
+      }
+    }
+
+    // 创建新客人
+    const stmt = db.prepare(
+      'INSERT INTO guests (name, phone, id_card, email, notes) VALUES (?, ?, ?, ?, ?)'
+    );
+    const result = stmt.run(
+      guestData.name, guestData.phone || null, guestData.id_card || null,
+      guestData.email || null, guestData.notes || null
+    );
+    return db.prepare('SELECT * FROM guests WHERE guest_id = ?').get(result.lastInsertRowid);
   });
 
   // Data Backup & Restore

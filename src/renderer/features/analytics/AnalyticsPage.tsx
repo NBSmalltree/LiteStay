@@ -6,7 +6,10 @@ import {
 import type {
   DailyOccupancy, DailyRevenueByType, RoomTypeAnalysis,
   MonthlyRevenue, QuarterlyRevenue, YearlyRevenue, RevenueGrowth, PaymentMethodTrend,
+  ADRRevPARData, ADRRevPARTrend, ADRByRoomType,
+  SourceStat, SourceTrend,
 } from '../../../shared/types'
+import { SOURCE_LABELS } from '../../../shared/types'
 import { Card, Button } from '../../components'
 
 // Format: get date N days ago in YYYY-MM-DD
@@ -22,6 +25,14 @@ function daysAgo(n: number): string {
 }
 
 const PIE_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+
+const SOURCE_COLORS: Record<string, string> = {
+  ctrip: '#FF6B6B',
+  meituan: '#FFD93D',
+  direct: '#6BCB77',
+  returning: '#4D96FF',
+  other: '#9CA3AF',
+}
 
 export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
   const [occupancy, setOccupancy] = useState<DailyOccupancy[]>([])
@@ -41,6 +52,18 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
   })
   const [paymentMethodTrend, setPaymentMethodTrend] = useState<PaymentMethodTrend[]>([])
 
+  // Source analytics state
+  const [sourceStats, setSourceStats] = useState<SourceStat[]>([])
+  const [sourceTrend, setSourceTrend] = useState<SourceTrend[]>([])
+
+  // ADR/RevPAR state
+  const [adrRevparData, setAdrRevparData] = useState<ADRRevPARData>({
+    adr: 0, revpar: 0, total_room_fee: 0,
+    sold_room_nights: 0, available_room_nights: 0, occupancy_rate: 0
+  })
+  const [adrRevparTrend, setAdrRevparTrend] = useState<ADRRevPARTrend[]>([])
+  const [adrByRoomType, setAdrByRoomType] = useState<ADRByRoomType[]>([])
+
   const dateFrom = daysAgo(30)
   const dateTo = fmtDate(new Date())
 
@@ -50,18 +73,33 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
     window.electron.db.getRoomTypeAnalysis(dateFrom, dateTo).then(setRoomTypeData)
 
     const currentYear = new Date().getFullYear()
+    const startDate = new Date()
+    startDate.setMonth(startDate.getMonth() - 6)
+    const sourceDateFrom = startDate.toISOString().slice(0, 10)
+    const sourceDateTo = new Date().toISOString().slice(0, 10)
+
     Promise.all([
       window.electron.db.getMonthlyRevenue(currentYear),
       window.electron.db.getQuarterlyRevenue(currentYear),
       window.electron.db.getYearlyRevenue(),
       window.electron.db.getRevenueGrowth(),
       window.electron.db.getPaymentMethodTrend(6),
-    ]).then(([monthly, quarterly, yearly, growth, payment]) => {
+      window.electron.db.getADRRevPAR(dateFrom, dateTo),
+      window.electron.db.getADRRevPARTrend(30),
+      window.electron.db.getADRByRoomType(dateFrom, dateTo),
+      window.electron.db.getSourceStats(sourceDateFrom, sourceDateTo),
+      window.electron.db.getSourceTrend(6),
+    ]).then(([monthly, quarterly, yearly, growth, payment, adrData, adrTrend, adrByType, stats, trend]) => {
       setMonthlyRevenue(monthly)
       setQuarterlyRevenue(quarterly)
       setYearlyRevenue(yearly)
       setRevenueGrowth(growth)
       setPaymentMethodTrend(payment)
+      setAdrRevparData(adrData)
+      setAdrRevparTrend(adrTrend)
+      setAdrByRoomType(adrByType)
+      setSourceStats(stats)
+      setSourceTrend(trend)
     })
   }, [refreshKey])
 
@@ -124,6 +162,19 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
   const revenuePie = roomTypeData.map(r => ({ name: r.room_type, value: Math.round(r.revenue) }))
   const orderPie = roomTypeData.map(r => ({ name: r.room_type, value: r.order_count }))
 
+  // -- Source trend stacked area chart data transformation --
+  const sourceTrendData = useMemo(() => {
+    const byMonth: Record<string, Record<string, number>> = {}
+    for (const t of sourceTrend) {
+      if (!byMonth[t.month]) byMonth[t.month] = {}
+      byMonth[t.month][t.source] = t.order_count
+    }
+    return Object.entries(byMonth).map(([month, sources]) => ({
+      month,
+      ...sources,
+    }))
+  }, [sourceTrend])
+
   // Format revenue display
   function fmtRevenue(n: number): string {
     if (n >= 10000) return `${(n / 10000).toFixed(1)}万`
@@ -161,7 +212,144 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
         </Card>
         <Card padding="md" className="flex flex-col items-center justify-center">
           <span className="text-xs text-gray-500 mb-1">平均房价 (ADR)</span>
-          <span className="text-3xl font-bold text-orange-500">¥{adr}</span>
+          <span className="text-3xl font-bold text-orange-500">¥{adrRevparData.adr.toLocaleString()}</span>
+        </Card>
+      </div>
+
+      {/* ADR/RevPAR Core Metrics */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4">核心经营指标</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+          <Card padding="md" className="flex flex-col items-center justify-center">
+            <span className="text-xs text-gray-500 mb-1">ADR（平均房价）</span>
+            <span className="text-3xl font-bold text-blue-600">¥{adrRevparData.adr.toLocaleString()}</span>
+            <span className="text-xs text-gray-400 mt-1">Average Daily Rate</span>
+          </Card>
+          <Card padding="md" className="flex flex-col items-center justify-center">
+            <span className="text-xs text-gray-500 mb-1">RevPAR（每房收益）</span>
+            <span className="text-3xl font-bold text-purple-600">¥{adrRevparData.revpar.toLocaleString()}</span>
+            <span className="text-xs text-gray-400 mt-1">Revenue Per Available Room</span>
+          </Card>
+          <Card padding="md" className="flex flex-col items-center justify-center">
+            <span className="text-xs text-gray-500 mb-1">入住率</span>
+            <span className="text-3xl font-bold text-green-600">{adrRevparData.occupancy_rate}%</span>
+            <span className="text-xs text-gray-400 mt-1">Occupancy Rate</span>
+          </Card>
+        </div>
+
+        {/* ADR/RevPAR Detail Card */}
+        <Card padding="md" className="mb-4">
+          <h4 className="text-sm font-medium text-gray-500 mb-3">指标详情</h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <div className="flex justify-between py-1">
+                <span className="text-gray-600">总房费收入</span>
+                <span className="font-medium">¥{adrRevparData.total_room_fee.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="text-gray-600">已售房间夜数</span>
+                <span className="font-medium">{adrRevparData.sold_room_nights} 夜</span>
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between py-1">
+                <span className="text-gray-600">可售房间夜数</span>
+                <span className="font-medium">{adrRevparData.available_room_nights} 夜</span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="text-gray-600">入住率</span>
+                <span className="font-medium">{adrRevparData.occupancy_rate}%</span>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* ADR/RevPAR 30-day Trend */}
+        <Card padding="md" className="mb-4">
+          <h4 className="text-sm font-medium text-gray-500 mb-2">30天指标趋势</h4>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={adrRevparTrend} margin={{ top: 4, right: 16, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6b7280' }} interval={4} />
+                <YAxis
+                  yAxisId="left"
+                  tickFormatter={(v: number) => `¥${v}`}
+                  tick={{ fontSize: 11, fill: '#6b7280' }}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  domain={[0, 100]}
+                  tickFormatter={(v: number) => `${v}%`}
+                  tick={{ fontSize: 11, fill: '#6b7280' }}
+                />
+                <Tooltip
+                  formatter={(value: any, name: any) => {
+                    if (name === '入住率') return [`${value}%`, name]
+                    return [`¥${value}`, name]
+                  }}
+                  labelFormatter={(label: any) => `日期: ${label}`}
+                  contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="adr"
+                  name="ADR"
+                  stroke="#3B82F6"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="revpar"
+                  name="RevPAR"
+                  stroke="#8B5CF6"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="occupancy_rate"
+                  name="入住率"
+                  stroke="#10B981"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        {/* ADR by Room Type Bar Chart */}
+        <Card padding="md">
+          <h4 className="text-sm font-medium text-gray-500 mb-2">房型 ADR 对比</h4>
+          <div className="h-60">
+            {adrByRoomType.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={adrByRoomType} margin={{ top: 4, right: 16, left: -12, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="room_type" tick={{ fontSize: 11, fill: '#6b7280' }} />
+                  <YAxis
+                    tickFormatter={(v: number) => `¥${v}`}
+                    tick={{ fontSize: 11, fill: '#6b7280' }}
+                  />
+                  <Tooltip
+                    formatter={(value: any) => [`¥${Number(value).toLocaleString('zh-CN')}`, '平均ADR']}
+                    contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
+                  />
+                  <Bar dataKey="avg_adr" name="平均ADR" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-400 text-sm">暂无数据</div>
+            )}
+          </div>
         </Card>
       </div>
 
@@ -300,6 +488,145 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
           </div>
         </Card>
       </div>
+
+      {/* Source Analysis Section */}
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 mb-4">客人来源分析</h2>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Source Pie Chart */}
+        <Card padding="md">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">订单来源占比</h3>
+          <div className="h-64">
+            {sourceStats.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={sourceStats}
+                    dataKey="order_count"
+                    nameKey="source"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={90}
+                    paddingAngle={3}
+                    label={({ source, percent }: any) =>
+                      `${SOURCE_LABELS[source] || source} ${(percent * 100).toFixed(0)}%`
+                    }
+                    labelLine={{ strokeWidth: 1 }}
+                  >
+                    {sourceStats.map((entry) => (
+                      <Cell key={entry.source} fill={SOURCE_COLORS[entry.source] || '#9CA3AF'} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: any) => [`${value}单`, '订单数']}
+                    labelFormatter={(label: any) => SOURCE_LABELS[label] || label}
+                    contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-400 text-sm">暂无数据</div>
+            )}
+          </div>
+        </Card>
+
+        {/* Source Revenue Bar Chart */}
+        <Card padding="md">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">来源收益对比</h3>
+          <div className="h-64">
+            {sourceStats.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sourceStats} margin={{ top: 4, right: 16, left: -12, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="source"
+                    tickFormatter={(value: any) => SOURCE_LABELS[value] || value}
+                    tick={{ fontSize: 11, fill: '#6b7280' }}
+                  />
+                  <YAxis
+                    tickFormatter={(v: number) => `¥${v >= 10000 ? (v / 10000).toFixed(0) + '万' : v}`}
+                    tick={{ fontSize: 11, fill: '#6b7280' }}
+                  />
+                  <Tooltip
+                    formatter={(value: any) => [`¥${Number(value).toLocaleString('zh-CN')}`, '总收益']}
+                    labelFormatter={(label: any) => SOURCE_LABELS[label] || label}
+                    contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
+                  />
+                  <Bar dataKey="total_revenue" name="总收益" fill="#8B5CF6" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-400 text-sm">暂无数据</div>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* Source Trend Stacked Area Chart */}
+      <Card padding="md">
+        <h3 className="text-sm font-semibold text-gray-700 mb-4">来源趋势（近6个月）</h3>
+        <div className="h-64">
+          {sourceTrendData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={sourceTrendData} margin={{ top: 4, right: 16, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#6b7280' }} />
+                <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} />
+                <Tooltip
+                  formatter={(value: any) => [`${value}单`, '']}
+                  contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Area type="monotone" dataKey="ctrip" name="携程" stackId="1" fill="#FF6B6B" stroke="#FF6B6B" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="meituan" name="美团" stackId="1" fill="#FFD93D" stroke="#FFD93D" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="direct" name="直接预订" stackId="1" fill="#6BCB77" stroke="#6BCB77" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="returning" name="回头客" stackId="1" fill="#4D96FF" stroke="#4D96FF" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="other" name="其他" stackId="1" fill="#9CA3AF" stroke="#9CA3AF" fillOpacity={0.6} />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-full flex items-center justify-center text-gray-400 text-sm">暂无数据</div>
+          )}
+        </div>
+      </Card>
+
+      {/* Source Detail Table */}
+      {sourceStats.length > 0 && (
+        <Card padding="md">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">来源详细数据</h3>
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-gray-600">
+                <tr>
+                  <th className="text-left px-4 py-2 font-medium">来源</th>
+                  <th className="text-right px-4 py-2 font-medium">订单数</th>
+                  <th className="text-right px-4 py-2 font-medium">占比</th>
+                  <th className="text-right px-4 py-2 font-medium">总收益</th>
+                  <th className="text-right px-4 py-2 font-medium">平均客单价</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {sourceStats.map((stat) => {
+                  const totalOrders = sourceStats.reduce((sum, s) => sum + s.order_count, 0)
+                  const percentage = totalOrders > 0 ? (stat.order_count / totalOrders * 100).toFixed(1) : '0'
+                  return (
+                    <tr key={stat.source} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-2 text-gray-900 font-medium">{SOURCE_LABELS[stat.source] || stat.source}</td>
+                      <td className="px-4 py-2 text-right text-gray-700">{stat.order_count}</td>
+                      <td className="px-4 py-2 text-right text-gray-700">{percentage}%</td>
+                      <td className="px-4 py-2 text-right text-gray-900">¥{(stat.total_revenue || 0).toLocaleString('zh-CN')}</td>
+                      <td className="px-4 py-2 text-right text-gray-700">¥{Math.round(stat.avg_revenue || 0).toLocaleString('zh-CN')}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       {/* Revenue Analytics Section */}
       <div>
