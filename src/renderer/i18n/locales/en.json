@@ -23,6 +23,7 @@
     "pricing": "Pricing",
     "backup": "Backup",
     "guests": "Guests",
+    "invoices": "Invoices",
     "roomTypeConfig": "Room Types",
     "dbConnected": "DB Connected",
     "dbFailed": "Connection Failed",

@@ -23,6 +23,7 @@
     "pricing": "房价策略",
     "backup": "数据备份",
     "guests": "客人管理",
+    "invoices": "发票管理",
     "roomTypeConfig": "房型配置",
     "dbConnected": "数据库已连接",
     "dbFailed": "连接失败",

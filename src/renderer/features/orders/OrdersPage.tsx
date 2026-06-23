@@ -1,30 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, Input, Select } from '../../components'
 import type { Order, Room, RoomType } from '../../../shared/types'
-
-const STATUS_OPTIONS = [
-  { value: 'ALL', label: '全部' },
-  { value: 'IN_HOUSE', label: '在住' },
-  { value: 'PREBOOK', label: '预订' },
-  { value: 'CHECKED_OUT', label: '已退房' },
-]
 
 const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
   IN_HOUSE: { bg: 'bg-red-100', text: 'text-red-700' },
   PREBOOK: { bg: 'bg-blue-100', text: 'text-blue-700' },
   CHECKED_OUT: { bg: 'bg-gray-100', text: 'text-gray-600' },
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  IN_HOUSE: '在住',
-  PREBOOK: '预订',
-  CHECKED_OUT: '已退房',
-}
-
-const PAYMENT_LABELS: Record<string, string> = {
-  WeChat: '微信',
-  Alipay: '支付宝',
-  Cash: '现金',
 }
 
 interface SearchState {
@@ -39,16 +21,7 @@ interface SearchState {
   roomType: string
 }
 
-const PRESET_LABELS: Record<string, string> = {
-  today: '今天',
-  yesterday: '昨天',
-  thisWeek: '本周',
-  lastWeek: '上周',
-  thisMonth: '本月',
-  lastMonth: '上月',
-}
-
-const PRESET_KEYS = Object.keys(PRESET_LABELS)
+const PRESET_KEYS = ['today', 'yesterday', 'thisWeek', 'lastWeek', 'thisMonth', 'lastMonth']
 
 function formatDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -117,6 +90,7 @@ interface Props {
 }
 
 export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: Props) {
+  const { t } = useTranslation()
   const [orders, setOrders] = useState<Order[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
@@ -125,6 +99,28 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [search, setSearch] = useState<SearchState>({ ...EMPTY_SEARCH })
   const [localKey, setLocalKey] = useState(0)
+
+  const STATUS_OPTIONS = useMemo(() => [
+    { value: 'ALL', label: t('orders.status.all') },
+    { value: 'IN_HOUSE', label: t('orders.status.inHouse') },
+    { value: 'PREBOOK', label: t('orders.status.prebook') },
+    { value: 'CHECKED_OUT', label: t('orders.status.checkedOut') },
+  ], [t])
+
+  const STATUS_LABELS: Record<string, string> = useMemo(() => ({
+    IN_HOUSE: t('orders.status.inHouse'),
+    PREBOOK: t('orders.status.prebook'),
+    CHECKED_OUT: t('orders.status.checkedOut'),
+  }), [t])
+
+  const PRESET_LABELS: Record<string, string> = useMemo(() => ({
+    today: t('orders.today'),
+    yesterday: t('orders.yesterday'),
+    thisWeek: t('orders.thisWeek'),
+    lastWeek: t('orders.lastWeek'),
+    thisMonth: t('orders.thisMonth'),
+    lastMonth: t('orders.lastMonth'),
+  }), [t])
 
   useEffect(() => {
     if (initialFilter) setFilter(initialFilter)
@@ -150,12 +146,10 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
   const filtered = useMemo(() => {
     let result = orders
 
-    // 1. 状态筛选（tab 栏）
     if (filter !== 'ALL') {
       result = result.filter(o => o.status === filter)
     }
 
-    // 2. 关键词搜索
     const q = search.keyword.trim().toLowerCase()
     if (q) {
       result = result.filter(order => {
@@ -170,7 +164,6 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
       })
     }
 
-    // 3. 入住时间区间
     if (search.checkInFrom) {
       result = result.filter(o => o.check_in_date >= search.checkInFrom)
     }
@@ -178,7 +171,6 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
       result = result.filter(o => o.check_in_date <= search.checkInTo)
     }
 
-    // 4. 退房时间区间
     if (search.checkOutFrom) {
       result = result.filter(o => o.check_out_date >= search.checkOutFrom)
     }
@@ -186,7 +178,6 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
       result = result.filter(o => o.check_out_date <= search.checkOutTo)
     }
 
-    // 5. 房型筛选
     if (search.roomType !== 'ALL') {
       result = result.filter(o => {
         const room = roomMap.get(o.room_id)
@@ -205,7 +196,7 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
   }), [orders])
 
   const handleDelete = async (orderId: number) => {
-    if (!confirm('确定删除此订单？')) return
+    if (!confirm(t('common.confirm'))) return
     await window.electron.db.deleteOrder(orderId)
     setLocalKey(k => k + 1)
   }
@@ -240,8 +231,8 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">订单管理</h1>
-        <p className="mt-1 text-sm text-gray-500">查看和管理所有订单</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('orders.title')}</h1>
+        <p className="mt-1 text-sm text-gray-500">{t('orders.subtitle')}</p>
       </div>
 
       {/* Filter tabs */}
@@ -270,7 +261,7 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
             </svg>
             <Input
               type="text"
-              placeholder="搜索客人、房号..."
+              placeholder={t('orders.searchPlaceholder')}
               value={search.keyword}
               onChange={e => setSearch(prev => ({ ...prev, keyword: e.target.value }))}
               className="pl-9 pr-9"
@@ -297,7 +288,7 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
             </svg>
-            高级搜索
+            {t('orders.advancedSearch')}
             <svg className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
             </svg>
@@ -309,7 +300,7 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
           <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-5">
             {/* Check-in date section */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">入住时间</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('orders.checkInDate')}</label>
               <div className="flex flex-wrap gap-1.5 mb-3">
                 {PRESET_KEYS.map(preset => (
                   <button
@@ -329,7 +320,7 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
                     onClick={() => clearDateField('checkIn')}
                     className="px-2.5 py-1 text-xs rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                   >
-                    清除
+                    {t('orders.clear')}
                   </button>
                 )}
               </div>
@@ -340,7 +331,7 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
                   onChange={e => setSearch(prev => ({ ...prev, checkInFrom: e.target.value, checkInPreset: null }))}
                   className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                 />
-                <span className="text-sm text-gray-400">至</span>
+                <span className="text-sm text-gray-400">{t('finance.to')}</span>
                 <input
                   type="date"
                   value={search.checkInTo}
@@ -352,7 +343,7 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
 
             {/* Check-out date section */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">退房时间</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('orders.checkOutDate')}</label>
               <div className="flex flex-wrap gap-1.5 mb-3">
                 {PRESET_KEYS.map(preset => (
                   <button
@@ -372,7 +363,7 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
                     onClick={() => clearDateField('checkOut')}
                     className="px-2.5 py-1 text-xs rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                   >
-                    清除
+                    {t('orders.clear')}
                   </button>
                 )}
               </div>
@@ -383,7 +374,7 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
                   onChange={e => setSearch(prev => ({ ...prev, checkOutFrom: e.target.value, checkOutPreset: null }))}
                   className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                 />
-                <span className="text-sm text-gray-400">至</span>
+                <span className="text-sm text-gray-400">{t('finance.to')}</span>
                 <input
                   type="date"
                   value={search.checkOutTo}
@@ -396,21 +387,21 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
             {/* Status + Room type row */}
             <div className="grid grid-cols-2 gap-4">
               <Select
-                label="状态"
+                label={t('orders.statusCol')}
                 value={search.status}
                 onChange={e => setSearch(prev => ({ ...prev, status: e.target.value }))}
               >
-                <option value="ALL">全部</option>
-                <option value="IN_HOUSE">在住</option>
-                <option value="PREBOOK">预订</option>
-                <option value="CHECKED_OUT">已退房</option>
+                <option value="ALL">{t('orders.status.all')}</option>
+                <option value="IN_HOUSE">{t('orders.status.inHouse')}</option>
+                <option value="PREBOOK">{t('orders.status.prebook')}</option>
+                <option value="CHECKED_OUT">{t('orders.status.checkedOut')}</option>
               </Select>
               <Select
-                label="房型"
+                label={t('orders.roomType')}
                 value={search.roomType}
                 onChange={e => setSearch(prev => ({ ...prev, roomType: e.target.value }))}
               >
-                <option value="ALL">全部</option>
+                <option value="ALL">{t('orders.status.all')}</option>
                 {roomTypes.map(t => (
                   <option key={t.type_id} value={t.type_name}>{t.type_name}</option>
                 ))}
@@ -420,10 +411,10 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
             {/* Action buttons */}
             <div className="flex justify-between pt-1">
               <Button variant="ghost" size="sm" onClick={resetSearch}>
-                重置
+                {t('common.reset')}
               </Button>
               <Button size="sm" onClick={() => setShowAdvanced(false)}>
-                搜索
+                {t('common.search')}
               </Button>
             </div>
           </div>
@@ -434,25 +425,25 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">
           {(search.keyword.trim() || hasActiveAdvanced)
-            ? '没有找到匹配的订单'
+            ? t('orders.noFilteredOrders')
             : filter === 'ALL'
-              ? '暂无订单'
-              : `暂无${STATUS_OPTIONS.find(o => o.value === filter)?.label}订单`}
+              ? t('orders.noOrders')
+              : `暂无${STATUS_OPTIONS.find(o => o.value === filter)?.label}${t('orders.noOrders').replace('暂无', '')}`}
         </div>
       ) : (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-600">
               <tr>
-                <th className="text-left px-4 py-3 font-medium">房间</th>
-                <th className="text-left px-4 py-3 font-medium">客人</th>
-                <th className="text-left px-4 py-3 font-medium">入住</th>
-                <th className="text-left px-4 py-3 font-medium">退房</th>
-                <th className="text-left px-4 py-3 font-medium">状态</th>
-                <th className="text-right px-4 py-3 font-medium">房费</th>
-                <th className="text-right px-4 py-3 font-medium">押金</th>
-                <th className="text-right px-4 py-3 font-medium">杂费</th>
-                <th className="text-right px-4 py-3 font-medium">操作</th>
+                <th className="text-left px-4 py-3 font-medium">{t('orders.room')}</th>
+                <th className="text-left px-4 py-3 font-medium">{t('orders.guest')}</th>
+                <th className="text-left px-4 py-3 font-medium">{t('orders.checkIn')}</th>
+                <th className="text-left px-4 py-3 font-medium">{t('orders.checkOut')}</th>
+                <th className="text-left px-4 py-3 font-medium">{t('orders.statusCol')}</th>
+                <th className="text-right px-4 py-3 font-medium">{t('orders.roomFee')}</th>
+                <th className="text-right px-4 py-3 font-medium">{t('orders.deposit')}</th>
+                <th className="text-right px-4 py-3 font-medium">{t('orders.incidental')}</th>
+                <th className="text-right px-4 py-3 font-medium">{t('orders.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -488,7 +479,7 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
                         <button
                           onClick={() => room && onEditOrder(order, room)}
                           className="p-1.5 rounded text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
-                          title="编辑"
+                          title={t('common.edit')}
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
@@ -497,7 +488,7 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
                         <button
                           onClick={() => handleDelete(order.order_id)}
                           className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                          title="删除"
+                          title={t('common.delete')}
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
