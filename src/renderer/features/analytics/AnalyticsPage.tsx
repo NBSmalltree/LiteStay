@@ -1,9 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
-import type { DailyOccupancy, DailyRevenueByType, RoomTypeAnalysis } from '../../../shared/types'
+import type {
+  DailyOccupancy, DailyRevenueByType, RoomTypeAnalysis,
+  MonthlyRevenue, QuarterlyRevenue, YearlyRevenue, RevenueGrowth, PaymentMethodTrend,
+} from '../../../shared/types'
 import { Card, Button } from '../../components'
 
 // Format: get date N days ago in YYYY-MM-DD
@@ -26,6 +29,18 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
   const [roomTypeData, setRoomTypeData] = useState<RoomTypeAnalysis[]>([])
   const [showTable, setShowTable] = useState(false)
 
+  // Revenue analytics state
+  const [monthlyRevenue, setMonthlyRevenue] = useState<MonthlyRevenue[]>([])
+  const [quarterlyRevenue, setQuarterlyRevenue] = useState<QuarterlyRevenue[]>([])
+  const [yearlyRevenue, setYearlyRevenue] = useState<YearlyRevenue[]>([])
+  const [revenueGrowth, setRevenueGrowth] = useState<RevenueGrowth>({
+    current_month: 0,
+    last_month: 0,
+    growth_rate: 0,
+    growth_amount: 0
+  })
+  const [paymentMethodTrend, setPaymentMethodTrend] = useState<PaymentMethodTrend[]>([])
+
   const dateFrom = daysAgo(30)
   const dateTo = fmtDate(new Date())
 
@@ -33,6 +48,21 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
     window.electron.db.getDailyOccupancy(dateFrom, dateTo).then(setOccupancy)
     window.electron.db.getDailyRevenueByType(dateFrom, dateTo).then(setRevenue)
     window.electron.db.getRoomTypeAnalysis(dateFrom, dateTo).then(setRoomTypeData)
+
+    const currentYear = new Date().getFullYear()
+    Promise.all([
+      window.electron.db.getMonthlyRevenue(currentYear),
+      window.electron.db.getQuarterlyRevenue(currentYear),
+      window.electron.db.getYearlyRevenue(),
+      window.electron.db.getRevenueGrowth(),
+      window.electron.db.getPaymentMethodTrend(6),
+    ]).then(([monthly, quarterly, yearly, growth, payment]) => {
+      setMonthlyRevenue(monthly)
+      setQuarterlyRevenue(quarterly)
+      setYearlyRevenue(yearly)
+      setRevenueGrowth(growth)
+      setPaymentMethodTrend(payment)
+    })
   }, [refreshKey])
 
   // -- Stat card calculations --
@@ -116,7 +146,14 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
         </Card>
         <Card padding="md" className="flex flex-col items-center justify-center">
           <span className="text-xs text-gray-500 mb-1">本月收益</span>
-          <span className="text-3xl font-bold text-green-600">¥{fmtRevenue(monthRevenue)}</span>
+          <span className="text-3xl font-bold text-green-600">¥{fmtRevenue(revenueGrowth.current_month)}</span>
+          {revenueGrowth.last_month > 0 && (
+            <span className={`text-xs mt-1 ${revenueGrowth.growth_rate >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {revenueGrowth.growth_rate >= 0 ? '↑' : '↓'}
+              {' '}{Math.abs(revenueGrowth.growth_rate)}%
+              <span className="text-gray-500"> 较上月</span>
+            </span>
+          )}
         </Card>
         <Card padding="md" className="flex flex-col items-center justify-center">
           <span className="text-xs text-gray-500 mb-1">本月入住率</span>
@@ -263,6 +300,130 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
           </div>
         </Card>
       </div>
+
+      {/* Revenue Analytics Section */}
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 mb-4">收益分析报表</h2>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Monthly Revenue Stacked Bar Chart */}
+        <Card padding="md">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">月度收益构成</h3>
+          <div className="h-64">
+            {monthlyRevenue.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={monthlyRevenue} margin={{ top: 4, right: 16, left: -12, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#6b7280' }} />
+                  <YAxis
+                    tickFormatter={(v: number) => `¥${v >= 10000 ? (v / 10000).toFixed(0) + '万' : v}`}
+                    tick={{ fontSize: 11, fill: '#6b7280' }}
+                  />
+                  <Tooltip
+                    formatter={(value: any) => [`¥${Number(value).toLocaleString('zh-CN')}`]}
+                    contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="room_fee" name="房费" stackId="a" fill="#10B981" />
+                  <Bar dataKey="deposit" name="押金" stackId="a" fill="#3B82F6" />
+                  <Bar dataKey="incidental" name="杂费" stackId="a" fill="#F59E0B" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-400 text-sm">暂无数据</div>
+            )}
+          </div>
+        </Card>
+
+        {/* Quarterly Revenue Bar Chart */}
+        <Card padding="md">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">季度收益对比</h3>
+          <div className="h-64">
+            {quarterlyRevenue.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={quarterlyRevenue} margin={{ top: 4, right: 16, left: -12, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="quarter" tick={{ fontSize: 11, fill: '#6b7280' }} />
+                  <YAxis
+                    tickFormatter={(v: number) => `¥${v >= 10000 ? (v / 10000).toFixed(0) + '万' : v}`}
+                    tick={{ fontSize: 11, fill: '#6b7280' }}
+                  />
+                  <Tooltip
+                    formatter={(value: any) => [`¥${Number(value).toLocaleString('zh-CN')}`]}
+                    contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
+                  />
+                  <Bar dataKey="total" fill="#8B5CF6" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-400 text-sm">暂无数据</div>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* Payment Method Trend Stacked Area Chart */}
+      <Card padding="md">
+        <h3 className="text-sm font-semibold text-gray-700 mb-4">支付方式趋势</h3>
+        <div className="h-64">
+          {paymentMethodTrend.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={paymentMethodTrend} margin={{ top: 4, right: 16, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#6b7280' }} />
+                <YAxis
+                  tickFormatter={(v: number) => `¥${v >= 10000 ? (v / 10000).toFixed(0) + '万' : v}`}
+                  tick={{ fontSize: 11, fill: '#6b7280' }}
+                />
+                <Tooltip
+                  formatter={(value: any) => [`¥${Number(value).toLocaleString('zh-CN')}`]}
+                  contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Area type="monotone" dataKey="WeChat" name="微信" stackId="1" fill="#07C160" stroke="#07C160" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="Alipay" name="支付宝" stackId="1" fill="#1677FF" stroke="#1677FF" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="Cash" name="现金" stackId="1" fill="#F59E0B" stroke="#F59E0B" fillOpacity={0.6} />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-full flex items-center justify-center text-gray-400 text-sm">暂无数据</div>
+          )}
+        </div>
+      </Card>
+
+      {/* Yearly Revenue Summary Table */}
+      <Card padding="md">
+        <h3 className="text-sm font-semibold text-gray-700 mb-4">年度收益汇总</h3>
+        {yearlyRevenue.length > 0 ? (
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-gray-600">
+                <tr>
+                  <th className="text-left px-4 py-2 font-medium">年份</th>
+                  <th className="text-right px-4 py-2 font-medium">总收益</th>
+                  <th className="text-right px-4 py-2 font-medium">房费</th>
+                  <th className="text-right px-4 py-2 font-medium">押金</th>
+                  <th className="text-right px-4 py-2 font-medium">杂费</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {yearlyRevenue.map((yr) => (
+                  <tr key={yr.year} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-2 text-gray-900 font-medium">{yr.year}</td>
+                    <td className="px-4 py-2 text-right text-gray-900">¥{yr.total.toLocaleString('zh-CN')}</td>
+                    <td className="px-4 py-2 text-right text-gray-700">¥{yr.room_fee.toLocaleString('zh-CN')}</td>
+                    <td className="px-4 py-2 text-right text-gray-700">¥{yr.deposit.toLocaleString('zh-CN')}</td>
+                    <td className="px-4 py-2 text-right text-gray-700">¥{yr.incidental.toLocaleString('zh-CN')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="h-16 flex items-center justify-center text-gray-400 text-sm">暂无数据</div>
+        )}
+      </Card>
 
       {/* Collapsible Detail Table */}
       <Card padding="md">

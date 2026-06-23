@@ -85,6 +85,104 @@ export interface RoomTypeAnalysis {
   avg_price: number
 }
 
+export interface PriceRule {
+  rule_id: number
+  room_type: string
+  rule_name: string
+  rule_type: 'weekday' | 'weekend' | 'holiday' | 'custom'
+  start_date?: string
+  end_date?: string
+  price_multiplier: number
+  fixed_price?: number
+  priority: number
+  is_active: boolean
+  created_at: string
+}
+
+export interface PriceCalendar {
+  date: string
+  room_type: string
+  base_price: number
+  final_price: number
+  applied_rule?: string
+}
+
+export interface BackupInfo {
+  filename: string
+  path: string
+  size: number
+  created_at: string
+}
+
+export interface MonthlyRevenue {
+  month: string
+  total: number
+  room_fee: number
+  deposit: number
+  incidental: number
+}
+
+export interface QuarterlyRevenue {
+  quarter: string
+  total: number
+  room_fee: number
+  deposit: number
+  incidental: number
+}
+
+export interface YearlyRevenue {
+  year: string
+  total: number
+  room_fee: number
+  deposit: number
+  incidental: number
+}
+
+export interface RevenueGrowth {
+  current_month: number
+  last_month: number
+  growth_rate: number
+  growth_amount: number
+}
+
+export interface PaymentMethodTrend {
+  month: string
+  payment_method: string
+  total: number
+}
+
+export interface Guest {
+  guest_id: number
+  name: string
+  phone?: string
+  id_card?: string
+  email?: string
+  notes?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface GuestWithStats extends Guest {
+  order_count: number
+  total_spent: number
+  last_check_in: string
+  preferred_room_type?: string
+}
+
+export interface GuestOrder {
+  order_id: number
+  room_id: number
+  guest_name: string
+  check_in_date: string
+  check_out_date: string
+  actual_amount: number
+  deposit: number
+  status: 'PREBOOK' | 'IN_HOUSE' | 'CHECKED_OUT'
+  notes?: string
+  room_number: string
+  room_type: string
+}
+
 export interface ElectronAPI {
   getPlatform(): Promise<string>
   win: {
@@ -123,6 +221,29 @@ export interface ElectronAPI {
     getRoomTypeAnalysis(dateFrom: string, dateTo: string): Promise<RoomTypeAnalysis[]>
     exportFinancialLogs(dateFrom: string, dateTo: string): Promise<string | null>
     exportNightAudit(auditData: NightAuditData): Promise<string | null>
+    getBackups(): Promise<BackupInfo[]>
+    createBackup(customName?: string): Promise<BackupInfo>
+    restoreBackup(backupFilename: string): Promise<boolean>
+    deleteBackup(backupFilename: string): Promise<boolean>
+    exportBackup(backupFilename: string): Promise<string | null>
+    importBackup(): Promise<BackupInfo | null>
+    getPriceRules(): Promise<PriceRule[]>
+    insertPriceRule(rule: Omit<PriceRule, 'rule_id' | 'created_at'>): Promise<PriceRule>
+    updatePriceRule(ruleId: number, updates: Partial<Omit<PriceRule, 'rule_id' | 'created_at'>>): Promise<PriceRule>
+    deletePriceRule(ruleId: number): Promise<boolean>
+    getPriceCalendar(roomType: string, dateFrom: string, dateTo: string): Promise<PriceCalendar[]>
+    getGuests(): Guest[]
+    insertGuest(guest: Pick<Guest, 'name'> & Partial<Pick<Guest, 'phone' | 'id_card' | 'email' | 'notes'>>): Guest
+    updateGuest(guestId: number, updates: Partial<Pick<Guest, 'name' | 'phone' | 'id_card' | 'email' | 'notes'>>): Guest
+    deleteGuest(guestId: number): boolean
+    getGuestsWithStats(): GuestWithStats[]
+    searchGuests(query: string): Guest[]
+    getGuestOrders(guestName: string): GuestOrder[]
+    getMonthlyRevenue(year: number): Promise<MonthlyRevenue[]>
+    getQuarterlyRevenue(year: number): Promise<QuarterlyRevenue[]>
+    getYearlyRevenue(): Promise<YearlyRevenue[]>
+    getRevenueGrowth(): Promise<RevenueGrowth>
+    getPaymentMethodTrend(months: number): Promise<PaymentMethodTrend[]>
   }
 }
 

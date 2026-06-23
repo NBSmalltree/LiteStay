@@ -1,6 +1,7 @@
 // LiteStay - Electron 主进程
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 // --- Database ---
 let db = null;
@@ -54,6 +55,29 @@ function initTables(database) {
       amount REAL NOT NULL,
       payment_method TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS price_rules (
+      rule_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      room_type TEXT NOT NULL,
+      rule_name TEXT NOT NULL,
+      rule_type TEXT NOT NULL,
+      start_date TEXT,
+      end_date TEXT,
+      price_multiplier REAL DEFAULT 1.0,
+      fixed_price REAL,
+      priority INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS guests (
+      guest_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      phone TEXT,
+      id_card TEXT,
+      email TEXT,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
@@ -519,6 +543,415 @@ function registerIpcHandlers() {
 
     await wb.xlsx.writeFile(filePath);
     return filePath;
+  });
+
+  // Revenue Analytics: monthly revenue breakdown
+  ipcMain.handle('db:getMonthlyRevenue', (_event, year) => {
+    const db = getDb();
+    return db.prepare(`
+      SELECT
+        strftime('%Y-%m', fl.created_at) as month,
+        SUM(fl.amount) as total,
+        SUM(CASE WHEN fl.type = 'ROOM_FEE' THEN fl.amount ELSE 0 END) as room_fee,
+        SUM(CASE WHEN fl.type = 'DEPOSIT' THEN fl.amount ELSE 0 END) as deposit,
+        SUM(CASE WHEN fl.type = 'INCIDENTAL' THEN fl.amount ELSE 0 END) as incidental
+      FROM financial_logs fl
+      WHERE strftime('%Y', fl.created_at) = ?
+      GROUP BY strftime('%Y-%m', fl.created_at)
+      ORDER BY month
+    `).all(year.toString());
+  });
+
+  // Revenue Analytics: quarterly revenue breakdown
+  ipcMain.handle('db:getQuarterlyRevenue', (_event, year) => {
+    const db = getDb();
+    return db.prepare(`
+      SELECT
+        CASE
+          WHEN CAST(strftime('%m', fl.created_at) AS INTEGER) BETWEEN 1 AND 3 THEN 'Q1'
+          WHEN CAST(strftime('%m', fl.created_at) AS INTEGER) BETWEEN 4 AND 6 THEN 'Q2'
+          WHEN CAST(strftime('%m', fl.created_at) AS INTEGER) BETWEEN 7 AND 9 THEN 'Q3'
+          ELSE 'Q4'
+        END as quarter,
+        SUM(fl.amount) as total,
+        SUM(CASE WHEN fl.type = 'ROOM_FEE' THEN fl.amount ELSE 0 END) as room_fee,
+        SUM(CASE WHEN fl.type = 'DEPOSIT' THEN fl.amount ELSE 0 END) as deposit,
+        SUM(CASE WHEN fl.type = 'INCIDENTAL' THEN fl.amount ELSE 0 END) as incidental
+      FROM financial_logs fl
+      WHERE strftime('%Y', fl.created_at) = ?
+      GROUP BY quarter
+      ORDER BY quarter
+    `).all(year.toString());
+  });
+
+  // Revenue Analytics: yearly revenue summary
+  ipcMain.handle('db:getYearlyRevenue', () => {
+    const db = getDb();
+    return db.prepare(`
+      SELECT
+        strftime('%Y', fl.created_at) as year,
+        SUM(fl.amount) as total,
+        SUM(CASE WHEN fl.type = 'ROOM_FEE' THEN fl.amount ELSE 0 END) as room_fee,
+        SUM(CASE WHEN fl.type = 'DEPOSIT' THEN fl.amount ELSE 0 END) as deposit,
+        SUM(CASE WHEN fl.type = 'INCIDENTAL' THEN fl.amount ELSE 0 END) as incidental
+      FROM financial_logs fl
+      GROUP BY strftime('%Y', fl.created_at)
+      ORDER BY year DESC
+      LIMIT 5
+    `).all();
+  });
+
+  // Revenue Analytics: month-over-month growth
+  ipcMain.handle('db:getRevenueGrowth', () => {
+    const db = getDb();
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const lastMonth = new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().slice(0, 7);
+
+    const current = db.prepare(`
+      SELECT SUM(amount) as total FROM financial_logs
+      WHERE strftime('%Y-%m', created_at) = ?
+    `).get(currentMonth);
+
+    const last = db.prepare(`
+      SELECT SUM(amount) as total FROM financial_logs
+      WHERE strftime('%Y-%m', created_at) = ?
+    `).get(lastMonth);
+
+    const currentTotal = current?.total || 0;
+    const lastTotal = last?.total || 0;
+    const growth = lastTotal > 0 ? ((currentTotal - lastTotal) / lastTotal * 100) : 0;
+
+    return {
+      current_month: currentTotal,
+      last_month: lastTotal,
+      growth_rate: Math.round(growth * 100) / 100,
+      growth_amount: currentTotal - lastTotal
+    };
+  });
+
+  // Revenue Analytics: payment method trend by month
+  ipcMain.handle('db:getPaymentMethodTrend', (_event, months) => {
+    const db = getDb();
+    return db.prepare(`
+      SELECT
+        strftime('%Y-%m', fl.created_at) as month,
+        fl.payment_method,
+        SUM(fl.amount) as total
+      FROM financial_logs fl
+      WHERE fl.created_at >= date('now', '-' || ? || ' months')
+      GROUP BY month, fl.payment_method
+      ORDER BY month, fl.payment_method
+    `).all(months);
+  });
+
+  // Price Rules
+  ipcMain.handle('db:getPriceRules', () => {
+    return getDb().prepare('SELECT * FROM price_rules ORDER BY room_type, priority DESC').all();
+  });
+
+  ipcMain.handle('db:insertPriceRule', (_event, rule) => {
+    const stmt = getDb().prepare(`
+      INSERT INTO price_rules (room_type, rule_name, rule_type, start_date, end_date,
+        price_multiplier, fixed_price, priority, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(
+      rule.room_type, rule.rule_name, rule.rule_type,
+      rule.start_date || null, rule.end_date || null, rule.price_multiplier,
+      rule.fixed_price || null, rule.priority, rule.is_active ? 1 : 0
+    );
+    return getDb().prepare('SELECT * FROM price_rules WHERE rule_id = ?').get(result.lastInsertRowid);
+  });
+
+  ipcMain.handle('db:updatePriceRule', (_event, ruleId, updates) => {
+    const fields = [];
+    const values = [];
+    for (const [key, val] of Object.entries(updates)) {
+      if (key === 'is_active') {
+        fields.push(`${key} = ?`);
+        values.push(val ? 1 : 0);
+      } else {
+        fields.push(`${key} = ?`);
+        values.push(val);
+      }
+    }
+    values.push(ruleId);
+    getDb().prepare(`UPDATE price_rules SET ${fields.join(', ')} WHERE rule_id = ?`).run(...values);
+    return getDb().prepare('SELECT * FROM price_rules WHERE rule_id = ?').get(ruleId);
+  });
+
+  ipcMain.handle('db:deletePriceRule', (_event, ruleId) => {
+    getDb().prepare('DELETE FROM price_rules WHERE rule_id = ?').run(ruleId);
+    return true;
+  });
+
+  ipcMain.handle('db:getPriceCalendar', (_event, roomType, dateFrom, dateTo) => {
+    const db = getDb();
+    const basePrice = db.prepare('SELECT base_price FROM rooms WHERE room_type = ? LIMIT 1').get(roomType)?.base_price || 0;
+
+    const rules = db.prepare(`
+      SELECT * FROM price_rules
+      WHERE room_type = ? AND is_active = 1
+      ORDER BY priority DESC
+    `).all(roomType);
+
+    const calendar = [];
+    const start = new Date(dateFrom + 'T00:00:00');
+    const end = new Date(dateTo + 'T00:00:00');
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().slice(0, 10);
+      const dayOfWeek = d.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+      let appliedRule = undefined;
+      let finalPrice = basePrice;
+
+      for (const rule of rules) {
+        let match = false;
+
+        if (rule.rule_type === 'weekend' && isWeekend) {
+          match = true;
+        } else if (rule.rule_type === 'weekday' && !isWeekend) {
+          match = true;
+        } else if ((rule.rule_type === 'holiday' || rule.rule_type === 'custom') && rule.start_date && rule.end_date) {
+          if (dateStr >= rule.start_date && dateStr <= rule.end_date) {
+            match = true;
+          }
+        }
+
+        if (match) {
+          appliedRule = rule;
+          if (rule.fixed_price) {
+            finalPrice = rule.fixed_price;
+          } else {
+            finalPrice = basePrice * rule.price_multiplier;
+          }
+          break;
+        }
+      }
+
+      calendar.push({
+        date: dateStr,
+        room_type: roomType,
+        base_price: basePrice,
+        final_price: Math.round(finalPrice * 100) / 100,
+        applied_rule: appliedRule ? appliedRule.rule_name : undefined,
+      });
+    }
+
+    return calendar;
+  });
+
+  // Guests
+  ipcMain.handle('db:getGuests', () => {
+    return getDb().prepare('SELECT * FROM guests ORDER BY name').all();
+  });
+
+  ipcMain.handle('db:insertGuest', (_event, guest) => {
+    const stmt = getDb().prepare(
+      'INSERT INTO guests (name, phone, id_card, email, notes) VALUES (?, ?, ?, ?, ?)'
+    );
+    const result = stmt.run(guest.name, guest.phone || null, guest.id_card || null, guest.email || null, guest.notes || null);
+    return getDb().prepare('SELECT * FROM guests WHERE guest_id = ?').get(result.lastInsertRowid);
+  });
+
+  ipcMain.handle('db:updateGuest', (_event, guestId, updates) => {
+    const fields = [];
+    const values = [];
+    for (const [key, val] of Object.entries(updates)) {
+      fields.push(`${key} = ?`);
+      values.push(val);
+    }
+    fields.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(guestId);
+    getDb().prepare(`UPDATE guests SET ${fields.join(', ')} WHERE guest_id = ?`).run(...values);
+    return getDb().prepare('SELECT * FROM guests WHERE guest_id = ?').get(guestId);
+  });
+
+  ipcMain.handle('db:deleteGuest', (_event, guestId) => {
+    getDb().prepare('DELETE FROM guests WHERE guest_id = ?').run(guestId);
+    return true;
+  });
+
+  ipcMain.handle('db:getGuestsWithStats', () => {
+    return getDb().prepare(`
+      SELECT
+        g.*,
+        COUNT(DISTINCT o.order_id) as order_count,
+        COALESCE(SUM(o.actual_amount), 0) as total_spent,
+        MAX(o.check_in_date) as last_check_in,
+        (
+          SELECT r2.room_type
+          FROM orders o2
+          JOIN rooms r2 ON o2.room_id = r2.room_id
+          WHERE o2.guest_name = g.name
+          GROUP BY r2.room_type
+          ORDER BY COUNT(*) DESC
+          LIMIT 1
+        ) as preferred_room_type
+      FROM guests g
+      LEFT JOIN orders o ON o.guest_name = g.name
+      GROUP BY g.guest_id
+      ORDER BY g.name
+    `).all();
+  });
+
+  ipcMain.handle('db:searchGuests', (_event, query) => {
+    return getDb().prepare(`
+      SELECT * FROM guests
+      WHERE name LIKE ? OR phone LIKE ?
+      ORDER BY name
+      LIMIT 20
+    `).all(`%${query}%`, `%${query}%`);
+  });
+
+  ipcMain.handle('db:getGuestOrders', (_event, guestName) => {
+    return getDb().prepare(`
+      SELECT o.*, r.room_number, r.room_type
+      FROM orders o
+      JOIN rooms r ON o.room_id = r.room_id
+      WHERE o.guest_name = ?
+      ORDER BY o.check_in_date DESC
+    `).all(guestName);
+  });
+
+  // Data Backup & Restore
+  ipcMain.handle('db:getBackups', () => {
+    const backupDir = path.join(app.getPath('userData'), 'LiteStay', 'backups');
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+      return [];
+    }
+    const files = fs.readdirSync(backupDir)
+      .filter(f => f.endsWith('.sqlite'))
+      .map(f => {
+        const filePath = path.join(backupDir, f);
+        const stats = fs.statSync(filePath);
+        return {
+          filename: f,
+          path: filePath,
+          size: stats.size,
+          created_at: stats.birthtime.toISOString(),
+        };
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return files;
+  });
+
+  ipcMain.handle('db:createBackup', async (_event, customName) => {
+    const dbPath = path.join(app.getPath('userData'), 'LiteStay', 'database.sqlite');
+    const backupDir = path.join(app.getPath('userData'), 'LiteStay', 'backups');
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = customName
+      ? `${customName}_${timestamp}.sqlite`
+      : `backup_${timestamp}.sqlite`;
+    const backupPath = path.join(backupDir, filename);
+    fs.copyFileSync(dbPath, backupPath);
+    const stats = fs.statSync(backupPath);
+    if (stats.size === 0) {
+      fs.unlinkSync(backupPath);
+      throw new Error('备份文件为空，备份失败');
+    }
+    return {
+      filename,
+      path: backupPath,
+      size: stats.size,
+      created_at: stats.birthtime.toISOString(),
+    };
+  });
+
+  ipcMain.handle('db:restoreBackup', async (_event, backupFilename) => {
+    const backupDir = path.join(app.getPath('userData'), 'LiteStay', 'backups');
+    const backupPath = path.join(backupDir, backupFilename);
+    const dbPath = path.join(app.getPath('userData'), 'LiteStay', 'database.sqlite');
+    if (!fs.existsSync(backupPath)) {
+      throw new Error('备份文件不存在');
+    }
+    const stats = fs.statSync(backupPath);
+    if (stats.size === 0) {
+      throw new Error('备份文件损坏');
+    }
+    const tempBackup = dbPath + '.temp';
+    fs.copyFileSync(dbPath, tempBackup);
+    try {
+      // Close existing connection before overwriting
+      if (db) {
+        db.close();
+        db = null;
+      }
+      fs.copyFileSync(backupPath, dbPath);
+      const Database = require('better-sqlite3');
+      const testDb = new Database(dbPath);
+      testDb.prepare('SELECT COUNT(*) FROM rooms').get();
+      testDb.close();
+      fs.unlinkSync(tempBackup);
+      // Re-initialize connection for subsequent queries
+      getDb();
+      return true;
+    } catch (e) {
+      // Restore original database
+      if (db) { db.close(); db = null; }
+      fs.copyFileSync(tempBackup, dbPath);
+      fs.unlinkSync(tempBackup);
+      getDb();
+      throw new Error('备份文件损坏，恢复失败：' + e.message);
+    }
+  });
+
+  ipcMain.handle('db:deleteBackup', (_event, backupFilename) => {
+    const backupDir = path.join(app.getPath('userData'), 'LiteStay', 'backups');
+    const backupPath = path.join(backupDir, backupFilename);
+    if (fs.existsSync(backupPath)) {
+      fs.unlinkSync(backupPath);
+    }
+    return true;
+  });
+
+  ipcMain.handle('db:exportBackup', async (_event, backupFilename) => {
+    const backupDir = path.join(app.getPath('userData'), 'LiteStay', 'backups');
+    const backupPath = path.join(backupDir, backupFilename);
+    const { filePath } = await dialog.showSaveDialog({
+      defaultPath: backupFilename,
+      filters: [{ name: 'SQLite Database', extensions: ['sqlite'] }],
+    });
+    if (filePath) {
+      fs.copyFileSync(backupPath, filePath);
+      return filePath;
+    }
+    return null;
+  });
+
+  ipcMain.handle('db:importBackup', async () => {
+    const { filePaths } = await dialog.showOpenDialog({
+      filters: [{ name: 'SQLite Database', extensions: ['sqlite'] }],
+      properties: ['openFile'],
+    });
+    if (filePaths && filePaths.length > 0) {
+      const sourcePath = filePaths[0];
+      const backupDir = path.join(app.getPath('userData'), 'LiteStay', 'backups');
+      if (!fs.existsSync(backupDir)) {
+        fs.mkdirSync(backupDir, { recursive: true });
+      }
+      const filename = `imported_${Date.now()}.sqlite`;
+      const backupPath = path.join(backupDir, filename);
+      fs.copyFileSync(sourcePath, backupPath);
+      const stats = fs.statSync(backupPath);
+      if (stats.size === 0) {
+        fs.unlinkSync(backupPath);
+        throw new Error('导入的文件为空');
+      }
+      return {
+        filename,
+        path: backupPath,
+        size: stats.size,
+        created_at: stats.birthtime.toISOString(),
+      };
+    }
+    return null;
   });
 }
 

@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Dialog, Input, Select, Button } from '../../components'
-import type { Room } from '../../../shared/types'
+import type { Room, Guest } from '../../../shared/types'
 
 interface Props {
   open: boolean
@@ -37,6 +37,12 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
+  // Guest search state
+  const [guestSearchResults, setGuestSearchResults] = useState<Guest[]>([])
+  const [showGuestSearch, setShowGuestSearch] = useState(false)
+  const guestSearchDebounce = useRef<ReturnType<typeof setTimeout>>()
+  const guestSearchContainerRef = useRef<HTMLDivElement>(null)
+
   // Reset form when dialog opens
   useEffect(() => {
     if (open && room) {
@@ -47,8 +53,22 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
       setPaymentMethod('WeChat')
       setNotes('')
       setError('')
+      setGuestSearchResults([])
+      setShowGuestSearch(false)
     }
   }, [open, room, checkInDate])
+
+  // Close guest search dropdown on click outside
+  useEffect(() => {
+    if (!showGuestSearch) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (guestSearchContainerRef.current && !guestSearchContainerRef.current.contains(e.target as Node)) {
+        setShowGuestSearch(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showGuestSearch])
 
   const nights = useMemo(() => daysBetween(checkInDate, checkOut), [checkInDate, checkOut])
   const basePrice = room ? room.base_price * nights : 0
