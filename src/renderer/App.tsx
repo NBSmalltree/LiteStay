@@ -5,10 +5,11 @@ import CheckInDialog from './features/room-matrix/CheckInDialog'
 import OrderDetailDialog from './features/room-matrix/OrderDetailDialog'
 import OrdersPage from './features/orders/OrdersPage'
 import FinancePage from './features/finance/FinancePage'
+import AnalyticsPage from './features/analytics/AnalyticsPage'
 import RoomStatusOverview from './features/room-matrix/RoomStatusOverview'
 import type { Room, RoomType, Order } from '../shared/types'
 
-type Page = 'dashboard' | 'rooms' | 'orders' | 'overview' | 'finance'
+type Page = 'dashboard' | 'rooms' | 'orders' | 'overview' | 'finance' | 'analytics'
 
 const navItems: { id: Page; label: string; icon: JSX.Element }[] = [
   {
@@ -53,6 +54,15 @@ const navItems: { id: Page; label: string; icon: JSX.Element }[] = [
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+      </svg>
+    ),
+  },
+  {
+    id: 'analytics',
+    label: '数据分析',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
       </svg>
     ),
   },
@@ -282,6 +292,22 @@ export default function App() {
                 roomPrice={roomPrice} setRoomPrice={setRoomPrice}
                 onInsertRoom={handleInsertRoom} formError={formError} setFormError={setFormError}
                 onOpenTypeManager={() => setShowTypeManager(true)}
+                onDeleteRoom={async (roomId) => {
+                  try {
+                    await window.electron.db.deleteRoom(roomId)
+                    await loadRooms()
+                  } catch (e: any) {
+                    alert(e?.message || '删除失败')
+                  }
+                }}
+                onUpdateRoom={async (roomId, updates) => {
+                  try {
+                    await window.electron.db.updateRoom(roomId, updates)
+                    await loadRooms()
+                  } catch (e: any) {
+                    alert(e?.message || '更新失败')
+                  }
+                }}
               />
             </div>
           )}
@@ -293,8 +319,25 @@ export default function App() {
               }} />
             </div>
           )}
+          {page === 'overview' && (
+            <RoomStatusOverview
+              key={refreshKey}
+              refreshKey={refreshKey}
+              onCheckIn={(room) => {
+                setCheckInRoom(room)
+                setCheckInDate(todayStr)
+              }}
+              onViewOrder={(order, room) => {
+                setSelectedOrder(order)
+                setSelectedOrderRoom(room)
+              }}
+            />
+          )}
           {page === 'finance' && (
             <FinancePage refreshKey={refreshKey} />
+          )}
+          {page === 'analytics' && (
+            <AnalyticsPage refreshKey={refreshKey} />
           )}
         </main>
       </div>
@@ -322,7 +365,7 @@ export default function App() {
 /* --- Room Management Page --- */
 function RoomsPage({
   rooms, roomTypes, roomNumber, setRoomNumber, roomType, setRoomType,
-  roomPrice, setRoomPrice, onInsertRoom, formError, setFormError, onOpenTypeManager,
+  roomPrice, setRoomPrice, onInsertRoom, formError, setFormError, onOpenTypeManager, onDeleteRoom, onUpdateRoom,
 }: {
   rooms: Room[]; roomTypes: RoomType[]
   roomNumber: string; setRoomNumber: (v: string) => void
@@ -330,7 +373,19 @@ function RoomsPage({
   roomPrice: string; setRoomPrice: (v: string) => void
   onInsertRoom: () => void; formError: string; setFormError: (v: string) => void
   onOpenTypeManager: () => void
+  onDeleteRoom: (roomId: number) => void
+  onUpdateRoom: (roomId: number, updates: Partial<Pick<Room, 'room_type' | 'base_price'>>) => void
 }) {
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editType, setEditType] = useState('')
+  const [editPrice, setEditPrice] = useState('')
+
+  const startEdit = (r: Room) => {
+    setEditingId(r.room_id)
+    setEditType(r.room_type)
+    setEditPrice(String(r.base_price))
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -373,15 +428,53 @@ function RoomsPage({
                   <th className="text-left px-4 py-2.5 font-medium">房间号</th>
                   <th className="text-left px-4 py-2.5 font-medium">房型</th>
                   <th className="text-right px-4 py-2.5 font-medium">基础房价</th>
+                  <th className="text-right px-4 py-2.5 font-medium">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {rooms.map((r) => (
-                  <tr key={r.room_id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-2.5 font-medium text-gray-900">{r.room_number}</td>
-                    <td className="px-4 py-2.5 text-gray-600">{r.room_type}</td>
-                    <td className="px-4 py-2.5 text-right text-gray-900">¥{r.base_price.toFixed(0)}</td>
-                  </tr>
+                  editingId === r.room_id ? (
+                    <tr key={r.room_id} className="bg-primary-50/30">
+                      <td className="px-4 py-2.5 font-medium text-gray-900">{r.room_number}</td>
+                      <td className="px-4 py-2.5">
+                        <Select value={editType} onChange={e => setEditType(e.target.value)}>
+                          {roomTypes.map(t => <option key={t.type_id} value={t.type_name}>{t.type_name}</option>)}
+                        </Select>
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <Input type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)} />
+                      </td>
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                        <button onClick={() => { onUpdateRoom(r.room_id, { room_type: editType, base_price: Number(editPrice) }); setEditingId(null) }}
+                          className="px-2 py-1 text-xs font-medium bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors">
+                          保存
+                        </button>
+                        <button onClick={() => setEditingId(null)}
+                          className="ml-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 transition-colors">
+                          取消
+                        </button>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={r.room_id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-2.5 font-medium text-gray-900">{r.room_number}</td>
+                      <td className="px-4 py-2.5 text-gray-600">{r.room_type}</td>
+                      <td className="px-4 py-2.5 text-right text-gray-900">¥{r.base_price.toFixed(0)}</td>
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                        <button onClick={() => startEdit(r)} className="p-1 rounded text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors" title="编辑">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+                          </svg>
+                        </button>
+                        <button onClick={() => { if (confirm(`确定删除房间 ${r.room_number}？`)) onDeleteRoom(r.room_id) }}
+                          className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="删除">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  )
                 ))}
               </tbody>
             </table>

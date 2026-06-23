@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Button, Input } from '../../components'
-import type { Order, Room } from '../../../shared/types'
+import { Button, Input, Select } from '../../components'
+import type { Order, Room, RoomType } from '../../../shared/types'
 
 const STATUS_OPTIONS = [
   { value: 'ALL', label: '全部' },
@@ -27,6 +27,89 @@ const PAYMENT_LABELS: Record<string, string> = {
   Cash: '现金',
 }
 
+interface SearchState {
+  keyword: string
+  checkInPreset: string | null
+  checkInFrom: string
+  checkInTo: string
+  checkOutPreset: string | null
+  checkOutFrom: string
+  checkOutTo: string
+  status: string
+  roomType: string
+}
+
+const PRESET_LABELS: Record<string, string> = {
+  today: '今天',
+  yesterday: '昨天',
+  thisWeek: '本周',
+  lastWeek: '上周',
+  thisMonth: '本月',
+  lastMonth: '上月',
+}
+
+const PRESET_KEYS = Object.keys(PRESET_LABELS)
+
+function formatDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+const datePresets: Record<string, () => { from: string; to: string }> = {
+  today: () => {
+    const d = new Date()
+    const dateStr = formatDate(d)
+    return { from: dateStr, to: dateStr }
+  },
+  yesterday: () => {
+    const d = new Date()
+    d.setDate(d.getDate() - 1)
+    const dateStr = formatDate(d)
+    return { from: dateStr, to: dateStr }
+  },
+  thisWeek: () => {
+    const d = new Date()
+    const day = d.getDay() || 7
+    const monday = new Date(d)
+    monday.setDate(d.getDate() - day + 1)
+    const sunday = new Date(monday)
+    sunday.setDate(monday.getDate() + 6)
+    return { from: formatDate(monday), to: formatDate(sunday) }
+  },
+  lastWeek: () => {
+    const d = new Date()
+    const day = d.getDay() || 7
+    const lastMonday = new Date(d)
+    lastMonday.setDate(d.getDate() - day - 6)
+    const lastSunday = new Date(lastMonday)
+    lastSunday.setDate(lastMonday.getDate() + 6)
+    return { from: formatDate(lastMonday), to: formatDate(lastSunday) }
+  },
+  thisMonth: () => {
+    const d = new Date()
+    const first = new Date(d.getFullYear(), d.getMonth(), 1)
+    const last = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+    return { from: formatDate(first), to: formatDate(last) }
+  },
+  lastMonth: () => {
+    const d = new Date()
+    const first = new Date(d.getFullYear(), d.getMonth() - 1, 1)
+    const last = new Date(d.getFullYear(), d.getMonth(), 0)
+    return { from: formatDate(first), to: formatDate(last) }
+  },
+}
+
+const EMPTY_SEARCH: SearchState = {
+  keyword: '',
+  checkInPreset: null,
+  checkInFrom: '',
+  checkInTo: '',
+  checkOutPreset: null,
+  checkOutFrom: '',
+  checkOutTo: '',
+  status: 'ALL',
+  roomType: 'ALL',
+}
+
 interface Props {
   onEditOrder: (order: Order, room: Room) => void
   refreshKey?: number
@@ -36,9 +119,11 @@ interface Props {
 export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: Props) {
   const [orders, setOrders] = useState<Order[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
+  const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
   const [incidentalMap, setIncidentalMap] = useState<Map<number, number>>(new Map())
   const [filter, setFilter] = useState(initialFilter ?? 'ALL')
-  const [searchQuery, setSearchQuery] = useState('')
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [search, setSearch] = useState<SearchState>({ ...EMPTY_SEARCH })
   const [localKey, setLocalKey] = useState(0)
 
   useEffect(() => {
@@ -48,6 +133,7 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
   useEffect(() => {
     Promise.resolve(window.electron.db.getOrders()).then(setOrders)
     Promise.resolve(window.electron.db.getRooms()).then(setRooms)
+    Promise.resolve(window.electron.db.getRoomTypes()).then(setRoomTypes)
     Promise.resolve(window.electron.db.getIncidentalSums()).then((rows: { order_id: number; total: number }[]) => {
       const m = new Map<number, number>()
       rows.forEach(r => m.set(r.order_id, r.total))
@@ -62,10 +148,15 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
   }, [rooms])
 
   const filtered = useMemo(() => {
-    // Status filter
-    let result = filter === 'ALL' ? orders : orders.filter(o => o.status === filter)
-    // Search filter
-    const q = searchQuery.trim().toLowerCase()
+    let result = orders
+
+    // 1. 状态筛选（tab 栏）
+    if (filter !== 'ALL') {
+      result = result.filter(o => o.status === filter)
+    }
+
+    // 2. 关键词搜索
+    const q = search.keyword.trim().toLowerCase()
     if (q) {
       result = result.filter(order => {
         const room = roomMap.get(order.room_id)
@@ -77,8 +168,33 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
         )
       })
     }
+
+    // 3. 入住时间区间
+    if (search.checkInFrom) {
+      result = result.filter(o => o.check_in_date >= search.checkInFrom)
+    }
+    if (search.checkInTo) {
+      result = result.filter(o => o.check_in_date <= search.checkInTo)
+    }
+
+    // 4. 退房时间区间
+    if (search.checkOutFrom) {
+      result = result.filter(o => o.check_out_date >= search.checkOutFrom)
+    }
+    if (search.checkOutTo) {
+      result = result.filter(o => o.check_out_date <= search.checkOutTo)
+    }
+
+    // 5. 房型筛选
+    if (search.roomType !== 'ALL') {
+      result = result.filter(o => {
+        const room = roomMap.get(o.room_id)
+        return room?.room_type === search.roomType
+      })
+    }
+
     return result
-  }, [orders, filter, searchQuery, roomMap])
+  }, [orders, filter, search, roomMap])
 
   const counts = useMemo(() => ({
     ALL: orders.length,
@@ -92,6 +208,33 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
     await window.electron.db.deleteOrder(orderId)
     setLocalKey(k => k + 1)
   }
+
+  const handlePreset = (field: 'checkIn' | 'checkOut', preset: string) => {
+    const dates = datePresets[preset]()
+    setSearch(prev => ({
+      ...prev,
+      [`${field}Preset`]: prev[`${field}Preset` as keyof SearchState] === preset ? null : preset,
+      [`${field}From`]: prev[`${field}Preset` as keyof SearchState] === preset ? '' : dates.from,
+      [`${field}To`]: prev[`${field}Preset` as keyof SearchState] === preset ? '' : dates.to,
+    }))
+  }
+
+  const clearDateField = (field: 'checkIn' | 'checkOut') => {
+    setSearch(prev => ({
+      ...prev,
+      [`${field}Preset`]: null,
+      [`${field}From`]: '',
+      [`${field}To`]: '',
+    }))
+  }
+
+  const resetSearch = () => {
+    setSearch({ ...EMPTY_SEARCH })
+  }
+
+  const hasActiveAdvanced = search.checkInFrom || search.checkInTo ||
+    search.checkOutFrom || search.checkOutTo ||
+    search.roomType !== 'ALL'
 
   return (
     <div className="space-y-5">
@@ -118,33 +261,178 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
       </div>
 
       {/* Search */}
-      <div className="relative">
-        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-        </svg>
-        <Input
-          type="text"
-          placeholder="搜索客人、房号、日期..."
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          className="pl-9 pr-9"
-        />
-        {searchQuery && (
+      <div className="space-y-3">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+            <Input
+              type="text"
+              placeholder="搜索客人、房号..."
+              value={search.keyword}
+              onChange={e => setSearch(prev => ({ ...prev, keyword: e.target.value }))}
+              className="pl-9 pr-9"
+            />
+            {search.keyword && (
+              <button
+                onClick={() => setSearch(prev => ({ ...prev, keyword: '' }))}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
           <button
-            onClick={() => setSearchQuery('')}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+            onClick={() => setShowAdvanced(v => !v)}
+            className={`flex items-center gap-1 px-3 py-2 text-sm rounded-lg border transition-colors ${
+              showAdvanced || hasActiveAdvanced
+                ? 'border-primary-500 text-primary-600 bg-primary-50'
+                : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:text-gray-800'
+            }`}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
+            </svg>
+            高级搜索
+            <svg className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
             </svg>
           </button>
+        </div>
+
+        {/* Advanced Search Panel */}
+        {showAdvanced && (
+          <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-5">
+            {/* Check-in date section */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">入住时间</label>
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {PRESET_KEYS.map(preset => (
+                  <button
+                    key={preset}
+                    onClick={() => handlePreset('checkIn', preset)}
+                    className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
+                      search.checkInPreset === preset
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {PRESET_LABELS[preset]}
+                  </button>
+                ))}
+                {search.checkInFrom && (
+                  <button
+                    onClick={() => clearDateField('checkIn')}
+                    className="px-2.5 py-1 text-xs rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                  >
+                    清除
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={search.checkInFrom}
+                  onChange={e => setSearch(prev => ({ ...prev, checkInFrom: e.target.value, checkInPreset: null }))}
+                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                />
+                <span className="text-sm text-gray-400">至</span>
+                <input
+                  type="date"
+                  value={search.checkInTo}
+                  onChange={e => setSearch(prev => ({ ...prev, checkInTo: e.target.value, checkInPreset: null }))}
+                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* Check-out date section */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">退房时间</label>
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {PRESET_KEYS.map(preset => (
+                  <button
+                    key={preset}
+                    onClick={() => handlePreset('checkOut', preset)}
+                    className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
+                      search.checkOutPreset === preset
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {PRESET_LABELS[preset]}
+                  </button>
+                ))}
+                {search.checkOutFrom && (
+                  <button
+                    onClick={() => clearDateField('checkOut')}
+                    className="px-2.5 py-1 text-xs rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                  >
+                    清除
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={search.checkOutFrom}
+                  onChange={e => setSearch(prev => ({ ...prev, checkOutFrom: e.target.value, checkOutPreset: null }))}
+                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                />
+                <span className="text-sm text-gray-400">至</span>
+                <input
+                  type="date"
+                  value={search.checkOutTo}
+                  onChange={e => setSearch(prev => ({ ...prev, checkOutTo: e.target.value, checkOutPreset: null }))}
+                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* Status + Room type row */}
+            <div className="grid grid-cols-2 gap-4">
+              <Select
+                label="状态"
+                value={search.status}
+                onChange={e => setSearch(prev => ({ ...prev, status: e.target.value }))}
+              >
+                <option value="ALL">全部</option>
+                <option value="IN_HOUSE">在住</option>
+                <option value="PREBOOK">预订</option>
+                <option value="CHECKED_OUT">已退房</option>
+              </Select>
+              <Select
+                label="房型"
+                value={search.roomType}
+                onChange={e => setSearch(prev => ({ ...prev, roomType: e.target.value }))}
+              >
+                <option value="ALL">全部</option>
+                {roomTypes.map(t => (
+                  <option key={t.type_id} value={t.type_name}>{t.type_name}</option>
+                ))}
+              </Select>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex justify-between pt-1">
+              <Button variant="ghost" size="sm" onClick={resetSearch}>
+                重置
+              </Button>
+              <Button size="sm" onClick={() => setShowAdvanced(false)}>
+                搜索
+              </Button>
+            </div>
+          </div>
         )}
       </div>
 
       {/* Table */}
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">
-          {searchQuery.trim()
+          {(search.keyword.trim() || hasActiveAdvanced)
             ? '没有找到匹配的订单'
             : filter === 'ALL'
               ? '暂无订单'

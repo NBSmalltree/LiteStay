@@ -1,7 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import type { Room, Order } from '../../../shared/types'
-import { Card } from '../../components'
 
 const DAYS_SHOWN = 14
 const ROOM_COL_W = 120
@@ -50,50 +48,6 @@ export default function RoomMatrix({ onCellClick, onOrderClick }: {
   }, [])
 
   const todayStr = useMemo(() => fmtDate(today), [today])
-
-  // Statistics: occupancy
-  const inHouseToday = useMemo(() => orders.filter(o =>
-    o.status === 'IN_HOUSE' && o.check_in_date <= todayStr && o.check_out_date > todayStr
-  ).length, [orders, todayStr])
-
-  const occupancyRate = rooms.length > 0
-    ? Math.round((inHouseToday / rooms.length) * 100)
-    : 0
-
-  // Statistics: vacant rooms
-  const occupiedRoomIds = useMemo(() => new Set(
-    orders.filter(o =>
-      (o.status === 'IN_HOUSE' || o.status === 'PREBOOK') &&
-      o.check_in_date <= todayStr && o.check_out_date > todayStr
-    ).map(o => o.room_id)
-  ), [orders, todayStr])
-
-  const vacantRooms = rooms.length - occupiedRoomIds.size
-
-  // Statistics: today check-in / check-out counts
-  const todayCheckInCount = useMemo(() => orders.filter(o =>
-    o.status === 'IN_HOUSE' && o.check_in_date === todayStr
-  ).length, [orders, todayStr])
-
-  const todayCheckOutCount = useMemo(() => orders.filter(o =>
-    o.status === 'CHECKED_OUT' && o.check_out_date === todayStr
-  ).length, [orders, todayStr])
-
-  // Statistics: 7-day booking trend
-  const trendData = useMemo(() => {
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = addDays(today, i)
-      const dateStr = fmtDate(d)
-      const count = orders.filter(o =>
-        (o.status === 'PREBOOK' || o.status === 'IN_HOUSE') &&
-        o.check_in_date <= dateStr && o.check_out_date > dateStr
-      ).length
-      return {
-        date: `${d.getMonth() + 1}/${d.getDate()}`,
-        预订数: count,
-      }
-    })
-  }, [orders, today])
 
   const visibleOrders = useMemo(
     () => orders.filter(o => o.check_out_date > rangeStart && o.check_in_date <= rangeEnd),
@@ -150,49 +104,6 @@ export default function RoomMatrix({ onCellClick, onOrderClick }: {
         <button onClick={goToday} className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">
           今天
         </button>
-      </div>
-
-      {/* Occupancy Statistics */}
-      <div className="mb-4 space-y-4">
-        {/* Stat Cards */}
-        <div className="grid grid-cols-4 gap-4">
-          <Card padding="sm" className="flex flex-col items-center justify-center">
-            <span className="text-xs text-gray-500 mb-1">今日入住率</span>
-            <span className="text-2xl font-bold text-primary-600">{occupancyRate}%</span>
-          </Card>
-          <Card padding="sm" className="flex flex-col items-center justify-center">
-            <span className="text-xs text-gray-500 mb-1">空房数</span>
-            <span className="text-2xl font-bold text-green-600">{vacantRooms}<span className="text-sm font-normal ml-0.5">间</span></span>
-          </Card>
-          <Card padding="sm" className="flex flex-col items-center justify-center">
-            <span className="text-xs text-gray-500 mb-1">今日入住</span>
-            <span className="text-2xl font-bold text-blue-600">{todayCheckInCount}<span className="text-sm font-normal ml-0.5">间</span></span>
-          </Card>
-          <Card padding="sm" className="flex flex-col items-center justify-center">
-            <span className="text-xs text-gray-500 mb-1">今日退房</span>
-            <span className="text-2xl font-bold text-orange-500">{todayCheckOutCount}<span className="text-sm font-normal ml-0.5">间</span></span>
-          </Card>
-        </div>
-
-        {/* 7-Day Trend Chart */}
-        <Card padding="sm">
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">未来7天预订趋势</h3>
-          <div className="h-40">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={trendData} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#6b7280' }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
-                <Tooltip
-                  formatter={(value: any) => [`${value}间`, '预订数']}
-                  labelFormatter={(label: any) => `日期: ${label}`}
-                  contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
-                />
-                <Bar dataKey="预订数" fill="#6366f1" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
       </div>
 
       {/* Grid */}

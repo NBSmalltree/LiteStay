@@ -65,6 +65,26 @@ export interface NightAuditData {
   occupancy: OccupancyStats
 }
 
+export interface DailyOccupancy {
+  date: string
+  totalRooms: number
+  occupiedRooms: number
+  occupancyRate: number
+}
+
+export interface DailyRevenueByType {
+  date: string
+  room_type: string
+  total: number
+}
+
+export interface RoomTypeAnalysis {
+  room_type: string
+  revenue: number
+  order_count: number
+  avg_price: number
+}
+
 export interface ElectronAPI {
   getPlatform(): Promise<string>
   win: {
@@ -80,6 +100,8 @@ export interface ElectronAPI {
     deleteRoomType(typeId: number): boolean
     insertRoom(room: Pick<Room, 'room_number' | 'room_type' | 'base_price'>): Room
     getRooms(): Room[]
+    deleteRoom(roomId: number): Promise<boolean>
+    updateRoom(roomId: number, updates: Partial<Pick<Room, 'room_type' | 'base_price'>>): Promise<Room>
     insertOrder(order: Omit<Order, 'order_id'>): Order
     getOrders(): Order[]
     updateOrder(orderId: number, updates: Partial<Omit<Order, 'order_id'>>): Order
@@ -96,6 +118,9 @@ export interface ElectronAPI {
     getFinancialLogsDetailed(dateFrom: string, dateTo: string): Promise<FinancialLogDetailed[]>
     getRevenueByRoomType(dateFrom: string, dateTo: string): Promise<RevenueByRoomType[]>
     getOccupancyStats(date: string): Promise<OccupancyStats>
+    getDailyOccupancy(dateFrom: string, dateTo: string): Promise<DailyOccupancy[]>
+    getDailyRevenueByType(dateFrom: string, dateTo: string): Promise<DailyRevenueByType[]>
+    getRoomTypeAnalysis(dateFrom: string, dateTo: string): Promise<RoomTypeAnalysis[]>
     exportFinancialLogs(dateFrom: string, dateTo: string): Promise<string | null>
     exportNightAudit(auditData: NightAuditData): Promise<string | null>
   }

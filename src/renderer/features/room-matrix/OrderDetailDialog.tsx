@@ -51,7 +51,14 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
   const [allRooms, setAllRooms] = useState<Room[]>([])
   const [showRoomChange, setShowRoomChange] = useState(false)
   const [targetRoomId, setTargetRoomId] = useState<number | null>(null)
-  const [confirmPriceChange, setConfirmPriceChange] = useState(false)
+  const [showPriceChangeConfirm, setShowPriceChangeConfirm] = useState(false)
+  const [pendingRoomChange, setPendingRoomChange] = useState<{
+    newRoomId: number
+    currentPrice: number
+    newPrice: number
+    diff: number
+    nights: number
+  } | null>(null)
 
   const loadLogs = async (orderId: number) => {
     const logs: FinancialLog[] = await (window.electron.db.getFinancialLogsByOrder(orderId) as any)
@@ -77,7 +84,8 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
       setEditingLogId(null)
       setShowRoomChange(false)
       setTargetRoomId(null)
-      setConfirmPriceChange(false)
+      setShowPriceChangeConfirm(false)
+      setPendingRoomChange(null)
       loadLogs(order.order_id)
       // Load all rooms for room-change feature
       window.electron.db.getRooms().then((rooms: any) => setAllRooms(rooms))
@@ -125,7 +133,7 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
     () => allRooms.find(r => r.room_id === targetRoomId) ?? null,
     [allRooms, targetRoomId],
   )
-  const isPriceDifferent = targetRoom && room && targetRoom.base_price !== room.base_price
+  const isPriceDifferent = targetRoom && room && Math.abs(targetRoom.base_price - room.base_price) > 0.01
 
   const handleStatusChange = async (newStatus: string) => {
     if (!order) return
@@ -196,31 +204,45 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
     setEditMethod(log.payment_method)
   }
 
-  const handleRoomChange = async () => {
+  const handleRoomChange = () => {
     if (!order || !targetRoom || !room) return
 
-    // If price differs and user hasn't confirmed yet, ask for confirmation
-    if (isPriceDifferent && !confirmPriceChange) {
-      setConfirmPriceChange(true)
-      return
-    }
+    const currentPrice = room.base_price
+    const newPrice = targetRoom.base_price
+    const priceDiff = newPrice - currentPrice
+    const nights = Math.max(1, Math.ceil((new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / 86400000))
 
+    if (Math.abs(priceDiff) > 0.01) {
+      // Price differs: show confirmation dialog
+      setPendingRoomChange({
+        newRoomId: targetRoom.room_id,
+        currentPrice,
+        newPrice,
+        diff: priceDiff,
+        nights,
+      })
+      setShowPriceChangeConfirm(true)
+    } else {
+      // Same price: execute directly
+      executeRoomChange(targetRoom.room_id, order.actual_amount)
+    }
+  }
+
+  const executeRoomChange = async (newRoomId: number, newAmount: number) => {
+    if (!order) return
     setSaving(true)
     setError('')
     try {
-      const updates: Record<string, any> = { room_id: targetRoom.room_id }
-      // Optionally adjust room fee to new room's base price
-      if (confirmPriceChange && isPriceDifferent) {
-        const nights = Math.max(1, Math.ceil((new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / 86400000))
-        const newAmount = targetRoom.base_price * nights
-        updates.actual_amount = newAmount
-        setActualAmount(String(newAmount))
-        await window.electron.db.updateFinancialLogAmount(order.order_id, 'ROOM_FEE', newAmount)
-      }
-      await window.electron.db.updateOrder(order.order_id, updates)
+      await window.electron.db.updateOrder(order.order_id, {
+        room_id: newRoomId,
+        actual_amount: newAmount,
+      })
+      await window.electron.db.updateFinancialLogAmount(order.order_id, 'ROOM_FEE', newAmount)
+      setActualAmount(String(newAmount))
+      setShowPriceChangeConfirm(false)
+      setPendingRoomChange(null)
       setShowRoomChange(false)
       setTargetRoomId(null)
-      setConfirmPriceChange(false)
       onSaved()
     } catch (e: any) {
       setError(e?.message || '换房失败')
@@ -434,7 +456,8 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
                   onChange={e => {
                     const val = e.target.value
                     setTargetRoomId(val ? Number(val) : null)
-                    setConfirmPriceChange(false)
+                    setShowPriceChangeConfirm(false)
+                    setPendingRoomChange(null)
                   }}
                 >
                   <option value="">请选择目标房间</option>
@@ -442,22 +465,16 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
                     .filter(r => r.room_id !== room.room_id)
                     .map(r => (
                       <option key={r.room_id} value={r.room_id}>
-                        {r.room_number} - {r.room_type}
+                        {r.room_number} - {r.room_type} (¥{r.base_price}/晚)
                       </option>
                     ))}
                 </Select>
               </div>
             </div>
 
-            {isPriceDifferent && confirmPriceChange && (
-              <p className="text-xs text-amber-700 bg-amber-50 px-3 py-1.5 rounded">
-                ⚠️ 新房型价格（¥{targetRoom!.base_price}/晚）与当前不同，将自动调整房费
-              </p>
-            )}
-
-            {isPriceDifferent && !confirmPriceChange && targetRoomId && (
+            {isPriceDifferent && targetRoomId && (
               <p className="text-xs text-indigo-600">
-                新房型价格（¥{targetRoom!.base_price}/晚）与当前不同
+                新房型价格（¥{targetRoom!.base_price}/晚）与当前不同，换房时将提示价格确认
               </p>
             )}
 
@@ -467,13 +484,14 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
                 disabled={saving || !targetRoomId}
                 className="px-3 py-1.5 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
               >
-                {confirmPriceChange ? '确认换房' : '换房'}
+                换房
               </button>
               <button
                 onClick={() => {
                   setShowRoomChange(false)
                   setTargetRoomId(null)
-                  setConfirmPriceChange(false)
+                  setShowPriceChangeConfirm(false)
+                  setPendingRoomChange(null)
                 }}
                 className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
               >
@@ -496,7 +514,7 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
             <Button variant="secondary" onClick={() => handleStatusChange('CHECKED_OUT')} disabled={saving}>
               办理退房
             </Button>
-            <Button variant="secondary" onClick={() => { setShowRoomChange(true); setConfirmPriceChange(false) }} disabled={saving}>
+            <Button variant="secondary" onClick={() => { setShowRoomChange(true) }} disabled={saving}>
               换房
             </Button>
           </div>
@@ -525,6 +543,85 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
           </div>
         </div>
       </div>
+
+      {/* Price change confirmation dialog */}
+      {showPriceChangeConfirm && pendingRoomChange && (
+        <Dialog
+          open={showPriceChangeConfirm}
+          onClose={() => {
+            setShowPriceChangeConfirm(false)
+            setPendingRoomChange(null)
+          }}
+          title="换房价格确认"
+          maxWidth="sm"
+        >
+          <div className="space-y-4">
+            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">当前房间：</span>
+                <span className="font-medium">{room?.room_number}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">当前房费：</span>
+                <span className="font-medium">¥{pendingRoomChange.currentPrice.toFixed(2)}/晚</span>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 rounded-lg p-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">新房间：</span>
+                <span className="font-medium">{allRooms.find(r => r.room_id === pendingRoomChange.newRoomId)?.room_number}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">标准价格：</span>
+                <span className="font-medium">¥{pendingRoomChange.newPrice.toFixed(2)}/晚</span>
+              </div>
+            </div>
+
+            <div className={`rounded-lg p-4 ${
+              pendingRoomChange.diff > 0 ? 'bg-amber-50' : 'bg-green-50'
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className="text-lg">
+                  {pendingRoomChange.diff > 0 ? '⚠️' : '✅'}
+                </span>
+                <span className={`font-medium ${
+                  pendingRoomChange.diff > 0 ? 'text-amber-800' : 'text-green-800'
+                }`}>
+                  价格差异：{pendingRoomChange.diff > 0 ? '+' : ''}
+                  ¥{pendingRoomChange.diff.toFixed(2)}/晚
+                </span>
+              </div>
+              <p className="text-sm text-gray-600 mt-1">
+                是否将订单房费调整为新价格？（共{pendingRoomChange.nights}晚）
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  executeRoomChange(pendingRoomChange.newRoomId, order!.actual_amount)
+                }}
+                disabled={saving}
+                className="flex-1"
+              >
+                保持原价 ¥{order!.actual_amount}
+              </Button>
+              <Button
+                onClick={() => {
+                  const newAmount = pendingRoomChange.newPrice * pendingRoomChange.nights
+                  executeRoomChange(pendingRoomChange.newRoomId, newAmount)
+                }}
+                disabled={saving}
+                className="flex-1"
+              >
+                调整为 ¥{(pendingRoomChange.newPrice * pendingRoomChange.nights).toFixed(2)}
+              </Button>
+            </div>
+          </div>
+        </Dialog>
+      )}
     </Dialog>
   )
 }

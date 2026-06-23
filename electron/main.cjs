@@ -108,6 +108,51 @@ function registerIpcHandlers() {
     return getDb().prepare('SELECT * FROM rooms ORDER BY room_number').all();
   });
 
+  ipcMain.handle('db:deleteRoom', (_event, roomId) => {
+    const active = getDb().prepare(
+      "SELECT COUNT(*) as c FROM orders WHERE room_id = ? AND status != 'CHECKED_OUT'"
+    ).get(roomId);
+    if (active && active.c > 0) {
+      throw new Error('该房间存在未退房的订单，无法删除');
+    }
+    getDb().prepare('DELETE FROM financial_logs WHERE order_id IN (SELECT order_id FROM orders WHERE room_id = ?)').run(roomId);
+    getDb().prepare('DELETE FROM orders WHERE room_id = ?').run(roomId);
+    getDb().prepare('DELETE FROM rooms WHERE room_id = ?').run(roomId);
+    return true;
+  });
+
+  ipcMain.handle('db:updateRoom', (_event, roomId, updates) => {
+    const db = getDb();
+    const oldRoom = db.prepare('SELECT * FROM rooms WHERE room_id = ?').get(roomId);
+    const fields = [];
+    const values = [];
+    for (const [key, val] of Object.entries(updates)) {
+      fields.push(`${key} = ?`);
+      values.push(val);
+    }
+    values.push(roomId);
+    db.prepare(`UPDATE rooms SET ${fields.join(', ')} WHERE room_id = ?`).run(...values);
+
+    // Recalculate active orders if base_price changed
+    if (updates.base_price !== undefined && oldRoom && updates.base_price !== oldRoom.base_price) {
+      const activeOrders = db.prepare(
+        "SELECT * FROM orders WHERE room_id = ? AND status != 'CHECKED_OUT'"
+      ).all(roomId);
+      const updateOrderStmt = db.prepare('UPDATE orders SET actual_amount = ? WHERE order_id = ?');
+      const updateLogStmt = db.prepare("UPDATE financial_logs SET amount = ? WHERE order_id = ? AND type = 'ROOM_FEE'");
+      for (const order of activeOrders) {
+        const nights = Math.max(1, Math.ceil(
+          (new Date(order.check_out_date).getTime() - new Date(order.check_in_date).getTime()) / 86400000
+        ));
+        const newAmount = updates.base_price * nights;
+        updateOrderStmt.run(newAmount, order.order_id);
+        updateLogStmt.run(newAmount, order.order_id);
+      }
+    }
+
+    return db.prepare('SELECT * FROM rooms WHERE room_id = ?').get(roomId);
+  });
+
   // Orders
   ipcMain.handle('db:insertOrder', (_event, order) => {
     const stmt = getDb().prepare(
@@ -264,6 +309,73 @@ function registerIpcHandlers() {
       WHERE status = 'IN_HOUSE' AND check_in_date <= ? AND check_out_date > ?
     `).get(date, date).count;
     return { totalRooms, occupiedRooms, vacantRooms: totalRooms - occupiedRooms };
+  });
+
+  // Analytics: daily occupancy for date range
+  ipcMain.handle('db:getDailyOccupancy', (_event, dateFrom, dateTo) => {
+    const db = getDb();
+    const totalRooms = db.prepare('SELECT COUNT(*) as c FROM rooms').get().c;
+    const orders = db.prepare(`
+      SELECT check_in_date, check_out_date, room_id FROM orders
+      WHERE status = 'IN_HOUSE'
+    `).all();
+
+    const result = [];
+    const start = new Date(dateFrom + 'T00:00:00');
+    const end = new Date(dateTo + 'T00:00:00');
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().slice(0, 10);
+      const occupied = new Set(
+        orders
+          .filter(o => o.check_in_date <= dateStr && o.check_out_date > dateStr)
+          .map(o => o.room_id)
+      ).size;
+      result.push({
+        date: `${d.getMonth() + 1}/${d.getDate()}`,
+        totalRooms,
+        occupiedRooms: occupied,
+        occupancyRate: totalRooms > 0 ? Math.round((occupied / totalRooms) * 100) : 0,
+      });
+    }
+    return result;
+  });
+
+  // Analytics: daily revenue by room type
+  ipcMain.handle('db:getDailyRevenueByType', (_event, dateFrom, dateTo) => {
+    const db = getDb();
+    return db.prepare(`
+      SELECT
+        DATE(fl.created_at) as date,
+        r.room_type,
+        SUM(fl.amount) as total
+      FROM financial_logs fl
+      JOIN orders o ON fl.order_id = o.order_id
+      JOIN rooms r ON o.room_id = r.room_id
+      WHERE fl.type = 'ROOM_FEE'
+        AND DATE(fl.created_at) BETWEEN ? AND ?
+      GROUP BY DATE(fl.created_at), r.room_type
+      ORDER BY date, room_type
+    `).all(dateFrom, dateTo);
+  });
+
+  // Analytics: room type analysis (revenue, order count, avg price)
+  ipcMain.handle('db:getRoomTypeAnalysis', (_event, dateFrom, dateTo) => {
+    const db = getDb();
+    return db.prepare(`
+      SELECT
+        r.room_type,
+        SUM(fl.amount) as revenue,
+        COUNT(DISTINCT o.order_id) as order_count,
+        AVG(fl.amount) as avg_price
+      FROM financial_logs fl
+      JOIN orders o ON fl.order_id = o.order_id
+      JOIN rooms r ON o.room_id = r.room_id
+      WHERE fl.type = 'ROOM_FEE'
+        AND DATE(fl.created_at) BETWEEN ? AND ?
+      GROUP BY r.room_type
+      ORDER BY revenue DESC
+    `).all(dateFrom, dateTo);
   });
 
   // Phase 4: Export to Excel
