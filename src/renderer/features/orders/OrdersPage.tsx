@@ -87,9 +87,10 @@ interface Props {
   onEditOrder: (order: Order, room: Room) => void
   refreshKey?: number
   initialFilter?: string
+  initialCheckInDate?: string
 }
 
-export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: Props) {
+export default function OrdersPage({ onEditOrder, refreshKey, initialFilter, initialCheckInDate }: Props) {
   const { t } = useTranslation()
   const [orders, setOrders] = useState<Order[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
@@ -124,7 +125,15 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter }: P
 
   useEffect(() => {
     if (initialFilter) setFilter(initialFilter)
-  }, [initialFilter])
+    if (initialCheckInDate) {
+      setSearch(prev => ({
+        ...prev,
+        checkInPreset: null,
+        checkInFrom: initialCheckInDate,
+        checkInTo: initialCheckInDate,
+      }))
+    }
+  }, [initialFilter, initialCheckInDate])
 
   useEffect(() => {
     Promise.resolve(window.electron.db.getOrders()).then(setOrders)

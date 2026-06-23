@@ -154,6 +154,7 @@ export default function App() {
   // Orders data for reminders
   const [orders, setOrders] = useState<Order[]>([])
   const [orderFilter, setOrderFilter] = useState('ALL')
+  const [orderDateFilter, setOrderDateFilter] = useState<string | undefined>(undefined)
 
   // Room form state
   const [roomNumber, setRoomNumber] = useState('101')
@@ -207,8 +208,9 @@ export default function App() {
   const hasReminders = todayCheckIns > 0 || tomorrowCheckOuts > 0 || overdueOrders > 0
   const showReminders = hasReminders && (page === 'dashboard' || page === 'rooms')
 
-  const handleReminderClick = (filter: string) => {
+  const handleReminderClick = (filter: string, checkInDate?: string) => {
     setOrderFilter(filter)
+    setOrderDateFilter(checkInDate)
     setPage('orders')
   }
 
@@ -294,7 +296,7 @@ export default function App() {
             <div className="px-6 pt-4 flex flex-wrap gap-2">
               {todayCheckIns > 0 && (
                 <button
-                  onClick={() => handleReminderClick('PREBOOK')}
+                  onClick={() => handleReminderClick('PREBOOK', todayStr)}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-sm font-medium hover:bg-blue-100 transition-colors cursor-pointer"
                 >
                   <span className="text-base">📥</span>
@@ -369,7 +371,7 @@ export default function App() {
           )}
           {page === 'orders' && (
             <div className="p-8">
-              <OrdersPage refreshKey={refreshKey} initialFilter={orderFilter} onEditOrder={(order, room) => {
+              <OrdersPage refreshKey={refreshKey} initialFilter={orderFilter} initialCheckInDate={orderDateFilter} onEditOrder={(order, room) => {
                 setSelectedOrder(order)
                 setSelectedOrderRoom(room)
               }} />

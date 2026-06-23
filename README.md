@@ -1,133 +1,135 @@
 # LiteStay
 
-民宿前台管理系统 — 纯本地单机版 PMS（Property Management System）
+B&B Front Desk Management System — A standalone local PMS (Property Management System)
 
-一个功能完整、可交付使用的民宿前台管理系统，支持中英文双语界面。
+A feature-complete, production-ready B&B front desk management system with bilingual support (Chinese/English).
 
-## ✨ 功能特性
+🌐 **[中文文档 / Chinese Documentation](README_CN.md)**
 
-### 🏠 房间管理
-- **房间矩阵** — 14 天房态矩阵，可视化查看房间占用情况，支持按天/按周导航
-- **房态总览** — 房间网格视图，颜色编码状态（空房/在住/预订/待清洁），支持筛选
-- **房型管理** — 标准间、大床房、双床房、豪华套房、家庭房等房型配置
+## ✨ Features
 
-### 📋 订单管理
-- **快速入住** — 点击空房格快速开房，填写客人信息、房费、押金、支付方式
-- **订单搜索** — 全局搜索框，支持按客人、房号、日期实时过滤
-- **高级搜索** — 可折叠面板，入住/退房时间区间搜索，6个日期预设（今天、昨天、本周、上周、本月、上月）
-- **快速换房** — 一键换房，价格差异化处理，自动更新财务记录
-- **订单状态** — 预订/在住/退房状态流转，续住、改价、退房操作
-- **备注字段** — 记录特殊需求（加床、接机、禁止吸烟等）
+### 🏠 Room Management
+- **Room Matrix** — 14-day room status matrix with visual occupancy view, day/week navigation
+- **Room Overview** — Room grid view with color-coded status (Vacant/In-House/Reserved/Cleaning), filter support
+- **Room Type Management** — Standard Room, King Room, Twin Room, Deluxe Suite, Family Room configuration
 
-### 👥 客人管理
-- **客人档案** — 客人姓名、手机号、身份证、邮箱、备注
-- **历史记录** — 客人入住次数、消费总额、偏好房型、历史订单
-- **客人搜索** — 按姓名、手机号模糊匹配（防抖 300ms）
-- **入住时搜索** — 自动搜索并选择历史客人
+### 📋 Order Management
+- **Quick Check-in** — Click empty room to quickly check in, fill guest info, room fee, deposit, payment method
+- **Order Search** — Global search box, real-time filtering by guest, room number, date
+- **Advanced Search** — Collapsible panel with check-in/checkout date range search, 6 presets (Today, Yesterday, This Week, Last Week, This Month, Last Month)
+- **Quick Room Change** — One-click room change with price difference handling, auto-update financial records
+- **Order Status** — Reserved/In-House/Checked Out status flow, extend stay, price adjustment, checkout
+- **Notes Field** — Record special requests (extra bed, pickup service, no smoking, etc.)
 
-### 💰 财务管理
-- **财务收银** — 收入汇总卡片、支付方式占比饼图、流水明细表
-- **夜审功能** — 一键生成当日财务报表，支持打印和导出
-- **杂费录入** — 在订单详情或财务页面录入杂费，支持编辑和删除
-- **发票管理** — 发票信息录入、状态管理（待开票/已开票/已取消）、导出清单
-- **Excel 导出** — 财务流水、夜审报表、发票清单导出
+### 👥 Guest Management
+- **Guest Profile** — Guest name, phone, ID card, email, notes
+- **History Records** — Guest visit count, total spending, preferred room type, order history
+- **Guest Search** — Fuzzy search by name, phone (debounce 300ms)
+- **Check-in Search** — Auto-search and select returning guests during check-in
 
-### 📊 数据分析
-- **入住率统计** — 今日入住率、空房数、今日入住/退房数量
-- **收益趋势** — 30 天收益趋势图（按房型堆叠显示）
-- **房型分析** — 收益占比饼图、订单数占比饼图
-- **收益分析报表** — 月度/季度/年度统计、同比增长、支付方式趋势
-- **客人来源统计** — 订单来源饼图（携程/美团/直接预订/回头客/其他）
-- **ADR/RevPAR 指标** — 平均房价、每房收益、入住率趋势、房型对比
+### 💰 Financial Management
+- **Finance Dashboard** — Income summary cards, payment method pie chart, transaction details
+- **Night Audit** — One-click daily financial report, support print and export
+- **Incidental Charges** — Record incidental charges in order details or finance page, edit/delete support
+- **Invoice Management** — Invoice info entry, status management (Pending/Issued/Cancelled), export list
+- **Excel Export** — Financial transactions, night audit reports, invoice list export
 
-### 💲 房价策略
-- **价格规则** — 支持平日、周末、节假日、自定义4种规则类型
-- **灵活定价** — 价格倍数或固定价格，优先级机制
-- **价格日历** — 30天价格日历，颜色编码（原价/涨价/降价）
-- **自动应用** — 入住时自动应用价格规则计算建议价格
+### 📊 Data Analytics
+- **Occupancy Statistics** — Today's occupancy rate, vacant rooms, today's check-in/check-out counts
+- **Revenue Trend** — 30-day revenue trend chart (stacked by room type)
+- **Room Type Analysis** — Revenue share pie chart, order count share pie chart
+- **Revenue Analysis Report** — Monthly/Quarterly/Annual statistics, year-over-year growth, payment method trends
+- **Guest Source Statistics** — Order source pie chart (Ctrip/Meituan/Direct Booking/Returning/Other)
+- **ADR/RevPAR Metrics** — Average Daily Rate, Revenue Per Available Room, occupancy trend, room type comparison
 
-### 🔔 提醒通知
-- **今日入住提醒** — 蓝色提醒，预订待入住数量
-- **明日退房提醒** — 黄色提醒，即将退房数量
-- **超时订单提醒** — 红色提醒，超时未退房数量
-- **点击跳转** — 点击提醒自动跳转订单页面并筛选
+### 💲 Pricing Strategy
+- **Price Rules** — Support 4 rule types: Weekday, Weekend, Holiday, Custom
+- **Flexible Pricing** — Price multiplier or fixed price, priority mechanism
+- **Price Calendar** — 30-day price calendar with color coding (Base Price/Price Up/Price Down)
+- **Auto Application** — Auto-apply price rules to calculate suggested price during check-in
 
-### 💾 数据安全
-- **数据备份** — 创建、恢复、导出、导入备份
-- **备份管理** — 备份列表、统计信息、文件大小显示
-- **安全恢复** — 恢复前验证、失败自动还原、删除确认
-- **系统集成** — 导出（保存对话框）、导入（打开对话框）
+### 🔔 Reminders & Notifications
+- **Today's Check-in Reminder** — Blue reminder, number of reservations to check in
+- **Tomorrow's Check-out Reminder** — Yellow reminder, number of rooms to check out
+- **Overdue Order Reminder** — Red reminder, number of overdue orders
+- **Click to Navigate** — Click reminder to auto-navigate to order page with filter applied
 
-### 🌐 国际化
-- **中英文双语** — 完整的中英文翻译覆盖
-- **语言切换** — 标题栏语言切换按钮（EN/中）
-- **自动检测** — 浏览器语言自动检测
-- **翻译覆盖** — 导航、页面、按钮、表单、表头、提示（340+ 翻译键值）
+### 💾 Data Security
+- **Data Backup** — Create, restore, export, import backups
+- **Backup Management** — Backup list, statistics, file size display
+- **Safe Restore** — Pre-restore validation, auto-restore on failure, delete confirmation
+- **System Integration** — Export (Save Dialog), Import (Open Dialog)
 
-## 🛠️ 技术栈
+### 🌐 Internationalization
+- **Bilingual Support** — Complete Chinese/English translation coverage
+- **Language Switch** — Title bar language toggle button (EN/中)
+- **Auto Detection** — Browser language auto-detection
+- **Translation Coverage** — Navigation, pages, buttons, forms, headers, prompts (340+ translation keys)
 
-| 层 | 技术 |
+## 🛠️ Tech Stack
+
+| Layer | Technology |
 |---|---|
-| 桌面框架 | Electron |
-| 前端 | React 18 + TypeScript + Tailwind CSS |
-| 图表 | Recharts（Line/Bar/Area/Pie Chart）|
-| 数据库 | SQLite（better-sqlite3）|
-| 导出 | ExcelJS |
-| 国际化 | react-i18next + i18next |
-| 构建 | Vite + electron-builder |
+| Desktop Framework | Electron |
+| Frontend | React 18 + TypeScript + Tailwind CSS |
+| Charts | Recharts (Line/Bar/Area/Pie Chart)|
+| Database | SQLite (better-sqlite3)|
+| Export | ExcelJS |
+| Internationalization | react-i18next + i18next |
+| Build | Vite + electron-builder |
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 安装依赖
+### Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 开发模式
+### Development Mode
 
 ```bash
-# 启动开发模式（Vite + Electron 热更新）
+# Start development mode (Vite + Electron hot reload)
 npm run dev
 
-# 仅启动 Web 开发服务器
+# Start web development server only
 npm run dev:web
 ```
 
-### 构建和打包
+### Build and Package
 
 ```bash
-# 构建前端
+# Build frontend
 npm run build
 
-# 打包 macOS 应用
+# Package macOS app
 npm run build:mac
 
-# 打包 Windows 应用
+# Package Windows app
 npm run build:win
 
-# 打包 Linux 应用
+# Package Linux app
 npm run build:linux
 ```
 
-## 📁 项目结构
+## 📁 Project Structure
 
 ```
 LiteStay/
 ├── electron/
-│   ├── main.cjs          # Electron 主进程，数据库 & IPC
-│   └── preload.cjs       # 预加载脚本，contextBridge
+│   ├── main.cjs          # Electron main process, database & IPC
+│   └── preload.cjs       # Preload script, contextBridge
 ├── src/
 │   ├── renderer/
-│   │   ├── App.tsx       # 主界面，路由 & 布局
-│   │   ├── main.tsx      # 入口文件
-│   │   ├── index.css     # 全局样式
-│   │   ├── i18n/         # 国际化配置
+│   │   ├── App.tsx       # Main interface, routing & layout
+│   │   ├── main.tsx      # Entry file
+│   │   ├── index.css     # Global styles
+│   │   ├── i18n/         # Internationalization config
 │   │   │   ├── index.ts
 │   │   │   └── locales/
-│   │   │       ├── zh.json  # 中文翻译
-│   │   │       └── en.json  # 英文翻译
-│   │   ├── components/   # 通用 UI 组件
+│   │   │       ├── zh.json  # Chinese translations
+│   │   │       └── en.json  # English translations
+│   │   ├── components/   # Common UI components
 │   │   │   ├── Button.tsx
 │   │   │   ├── Card.tsx
 │   │   │   ├── Dialog.tsx
@@ -135,84 +137,84 @@ LiteStay/
 │   │   │   ├── Select.tsx
 │   │   │   └── RoomTypeManager.tsx
 │   │   └── features/
-│   │       ├── room-matrix/    # 房间矩阵 & 入住/订单详情弹窗
-│   │       ├── room-overview/  # 房态总览
-│   │       ├── analytics/      # 数据分析页面
-│   │       ├── orders/         # 订单管理页面
-│   │       ├── guests/         # 客人管理页面
-│   │       ├── pricing/        # 房价策略页面
-│   │       ├── backup/         # 数据备份页面
-│   │       ├── invoices/       # 发票管理页面
-│   │       └── finance/        # 财务收银页面
+│   │       ├── room-matrix/    # Room matrix & check-in/order detail dialogs
+│   │       ├── room-overview/  # Room overview
+│   │       ├── analytics/      # Data analytics page
+│   │       ├── orders/         # Order management page
+│   │       ├── guests/         # Guest management page
+│   │       ├── pricing/        # Pricing strategy page
+│   │       ├── backup/         # Data backup page
+│   │       ├── invoices/       # Invoice management page
+│   │       └── finance/        # Finance dashboard page
 │   └── shared/
-│       └── types.ts      # 共享类型定义
-├── build/                # 应用图标
-├── TODO.md               # 功能待办清单
+│       └── types.ts      # Shared type definitions
+├── build/                # App icons
+├── TODO.md               # Feature todo list
 └── package.json
 ```
 
-## 🗄️ 数据库
+## 🗄️ Database
 
-SQLite 数据库存储在 `~/Library/Application Support/LiteStay/LiteStay/database.sqlite`（macOS），包含以下表：
+SQLite database is stored at `~/Library/Application Support/LiteStay/LiteStay/database.sqlite` (macOS), containing the following tables:
 
-### 核心表
+### Core Tables
 
-- **room_types** — 房型配置（标准间、大床房、双床房、豪华套房、家庭房）
-- **rooms** — 房间信息（房号、房型、基础价格）
-- **orders** — 订单（客人、入住/退房日期、房费、押金、状态、来源）
-- **financial_logs** — 财务流水（房费/押金/杂费、支付方式、金额）
+- **room_types** — Room type configuration (Standard Room, King Room, Twin Room, Deluxe Suite, Family Room)
+- **rooms** — Room information (room number, room type, base price)
+- **orders** — Orders (guest, check-in/checkout dates, room fee, deposit, status, source)
+- **financial_logs** — Financial transactions (Room Fee/Deposit/Incidental, payment method, amount)
 
-### 扩展表
+### Extension Tables
 
-- **guests** — 客人档案（姓名、手机号、身份证、邮箱、备注）
-- **price_rules** — 价格规则（房型、规则类型、价格调整、优先级）
-- **invoices** — 发票信息（抬头、税号、银行信息、状态）
+- **guests** — Guest profiles (name, phone, ID card, email, notes)
+- **price_rules** — Price rules (room type, rule type, price adjustment, priority)
+- **invoices** — Invoice information (title, tax number, bank info, status)
 
-## 🌍 国际化
+## 🌍 Internationalization
 
-应用支持中英文双语界面：
+The application supports bilingual interface (Chinese/English):
 
-- **中文（zh）** — 默认语言
-- **英文（en）** — 完整翻译支持
+- **Chinese (zh)** — Default language
+- **English (en)** — Complete translation support
 
-### 翻译覆盖范围
+### Translation Coverage
 
-- ✅ 导航菜单
-- ✅ 页面标题和副标题
-- ✅ 按钮文字
-- ✅ 表单标签
-- ✅ 表头
-- ✅ 提示信息
-- ✅ 状态标签
-- ⚠️ 数据库内容（保持原样，不翻译）
+- ✅ Navigation menus
+- ✅ Page titles and subtitles
+- ✅ Button text
+- ✅ Form labels
+- ✅ Table headers
+- ✅ Prompt messages
+- ✅ Status labels
+- ⚠️ Database content (kept as-is, not translated)
 
-### 语言切换
+### Language Switch
 
-点击标题栏右上角的语言切换按钮（EN/中）即可切换语言。语言设置会自动保存。
+Click the language toggle button (EN/中) in the top-right corner of the title bar to switch languages. Language settings are automatically saved.
 
-## 📊 功能统计
+## 📊 Feature Statistics
 
-- **页面数量**：8 个
-- **组件数量**：12+ 个
-- **数据库表**：8 个
-- **IPC handlers**：45+ 个
-- **TypeScript 接口**：35+ 个
-- **翻译键值**：340+ 个
+- **Page Count**: 8
+- **Component Count**: 12+
+- **Database Tables**: 8
+- **IPC Handlers**: 45+
+- **TypeScript Interfaces**: 35+
+- **Translation Keys**: 340+
 
-## 🎯 核心指标
+## 🎯 Key Metrics
 
-### ADR（Average Daily Rate）
-- 公式：总房费 / 已售房间夜数
-- 用途：衡量已售房间的平均房价，反映定价策略
+### ADR (Average Daily Rate)
+- Formula: Total Room Fee / Sold Room Nights
+- Purpose: Measures average price of sold rooms, reflects pricing strategy
 
-### RevPAR（Revenue Per Available Room）
-- 公式：总房费 / 可售房间夜数
-- 用途：衡量所有可售房间的收益效率，综合考虑入住率和房价
+### RevPAR (Revenue Per Available Room)
+- Formula: Total Room Fee / Available Room Nights
+- Purpose: Measures revenue efficiency of all available rooms, considering both occupancy and price
 
-### 关系
-- RevPAR = ADR × 入住率
+### Relationship
+- RevPAR = ADR × Occupancy Rate
 
-## 📦 打包发布
+## 📦 Packaging & Release
 
 ### macOS
 
@@ -220,7 +222,7 @@ SQLite 数据库存储在 `~/Library/Application Support/LiteStay/LiteStay/datab
 npm run build:mac
 ```
 
-生成文件：`release/LiteStay-1.0.0.dmg`
+Output file: `release/LiteStay-1.0.0.dmg`
 
 ### Windows
 
@@ -228,7 +230,7 @@ npm run build:mac
 npm run build:win
 ```
 
-生成文件：`release/LiteStay Setup 1.0.0.exe`
+Output file: `release/LiteStay Setup 1.0.0.exe`
 
 ### Linux
 
@@ -236,78 +238,78 @@ npm run build:win
 npm run build:linux
 ```
 
-生成文件：`release/LiteStay-1.0.0.AppImage`
+Output file: `release/LiteStay-1.0.0.AppImage`
 
-## 🔧 开发说明
+## 🔧 Development Notes
 
-### IPC 通信
+### IPC Communication
 
-所有数据库操作通过 IPC 通信：
-- 主进程：`electron/main.cjs` — 数据库操作、业务逻辑
-- 预加载：`electron/preload.cjs` — 暴露 API 到渲染进程
-- 渲染进程：`src/renderer/` — UI 界面、用户交互
+All database operations use IPC communication:
+- Main Process: `electron/main.cjs` — Database operations, business logic
+- Preload: `electron/preload.cjs` — Expose APIs to renderer process
+- Renderer: `src/renderer/` — UI interface, user interactions
 
-### 数据库迁移
+### Database Migration
 
-应用启动时自动检查并执行数据库迁移：
-- 添加缺失的字段
-- 创建新表
-- 保持数据兼容性
+App automatically checks and executes database migrations on startup:
+- Add missing fields
+- Create new tables
+- Maintain data compatibility
 
-### 代码风格
+### Code Style
 
-- TypeScript 严格模式
-- React 函数组件 + Hooks
-- Tailwind CSS 样式
-- 中文注释和文档
+- TypeScript strict mode
+- React functional components + Hooks
+- Tailwind CSS styling
+- Chinese comments and documentation
 
-## 📝 更新日志
+## 📝 Changelog
 
-### v1.0.0（2026-06-23）
+### v1.0.0 (2026-06-23)
 
-#### 核心功能
-- 房间矩阵（14天房态视图）
-- 订单管理（入住、编辑、状态流转）
-- 财务收银（收入汇总、流水明细、Excel导出）
+#### Core Features
+- Room Matrix (14-day room status view)
+- Order Management (Check-in, edit, status flow)
+- Finance Dashboard (Income summary, transaction details, Excel export)
 
-#### 高级功能
-- 客人历史记录和档案管理
-- 房价策略管理（规则、日历、自动应用）
-- 数据备份和恢复
-- 发票信息管理
-- 数据分析（入住率、收益、来源、ADR/RevPAR）
-- 多语言界面（中英文）
+#### Advanced Features
+- Guest history records and profile management
+- Pricing strategy management (rules, calendar, auto-apply)
+- Data backup and restore
+- Invoice management
+- Data analytics (Occupancy, Revenue, Source, ADR/RevPAR)
+- Bilingual interface (Chinese/English)
 
-#### 优化
-- 快速换房（价格差异化处理）
-- 订单高级搜索（日期区间、预设）
-- 入住率统计面板
-- 备注字段
-- 提醒通知
-- 夜审功能
+#### Optimizations
+- Quick room change (price difference handling)
+- Order advanced search (date range, presets)
+- Occupancy statistics panel
+- Notes field
+- Reminders & notifications
+- Night audit function
 
-## 🤝 贡献
+## 🤝 Contributing
 
-欢迎提交 Issue 和 Pull Request！
+Issues and Pull Requests are welcome!
 
-## 📄 许可证
+## 📄 License
 
 MIT License
 
-## 👨‍💻 作者
+## 👨‍💻 Author
 
 NBSmalltree
 
-## 🙏 致谢
+## 🙏 Acknowledgments
 
-- React - UI 框架
-- Electron - 桌面应用框架
-- Tailwind CSS - CSS 框架
-- Recharts - 图表库
-- better-sqlite3 - SQLite 绑定
-- ExcelJS - Excel 生成库
-- react-i18next - 国际化框架
+- React - UI Framework
+- Electron - Desktop Application Framework
+- Tailwind CSS - CSS Framework
+- Recharts - Chart Library
+- better-sqlite3 - SQLite Binding
+- ExcelJS - Excel Generation Library
+- react-i18next - Internationalization Framework
 
 ---
 
-**LiteStay** — 让民宿管理更简单、更高效！ 🏠✨
+**LiteStay** — Making B&B management simpler and more efficient! 🏠✨
