@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Dialog, Input, Select, Button } from '../../components'
+import { Dialog, Input, Select, Button, DatePicker } from '../../components'
 import type { Room, Guest } from '../../../shared/types'
 
 interface Props {
@@ -221,11 +221,9 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
             </div>
             <div className="space-y-1.5">
               <label htmlFor="check-out" className="block text-sm font-medium text-gray-700">{t('checkIn.checkOutDate')}</label>
-              <input
-                id="check-out"
-                type="date"
+              <DatePicker
                 value={checkOut}
-                onChange={e => setCheckOut(e.target.value)}
+                onChange={setCheckOut}
                 min={checkInDate}
                 className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900
                   focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"

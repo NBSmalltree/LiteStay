@@ -30,7 +30,7 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
       const list = await window.electron.db.getBackups()
       setBackups(list)
     } catch (e: any) {
-      setStatusMessage({ type: 'error', text: '加载备份列表失败: ' + e.message })
+      setStatusMessage({ type: 'error', text: t('backup.loadingFailed') + ': ' + e.message })
     }
   }, [])
 
@@ -44,7 +44,7 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
   }, [statusMessage])
 
   const totalSize = backups.reduce((sum, b) => sum + b.size, 0)
-  const lastBackupTime = backups.length > 0 ? formatTime(backups[0].created_at) : '暂无'
+  const lastBackupTime = backups.length > 0 ? formatTime(backups[0].created_at) : t('backup.noBackup')
 
   const handleCreate = async () => {
     setLoading(true)
@@ -52,10 +52,10 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
       await window.electron.db.createBackup(customName.trim() || undefined)
       setCustomName('')
       setShowCreateDialog(false)
-      setStatusMessage({ type: 'success', text: '备份创建成功' })
+      setStatusMessage({ type: 'success', text: t('backup.backupCreated') })
       await loadBackups()
     } catch (e: any) {
-      setStatusMessage({ type: 'error', text: '备份失败: ' + e.message })
+      setStatusMessage({ type: 'error', text: t('backup.backupFailed') + ': ' + e.message })
     } finally {
       setLoading(false)
     }
@@ -72,12 +72,12 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
     setShowConfirmRestore(false)
     try {
       await window.electron.db.restoreBackup(selectedBackup.filename)
-      setStatusMessage({ type: 'success', text: '备份恢复成功，应用将在2秒后重新加载' })
+      setStatusMessage({ type: 'success', text: t('backup.restoreSuccess') })
       setTimeout(() => {
         window.location.reload()
       }, 2000)
     } catch (e: any) {
-      setStatusMessage({ type: 'error', text: '恢复失败: ' + e.message })
+      setStatusMessage({ type: 'error', text: t('backup.restoreFailed') + ': ' + e.message })
     } finally {
       setLoading(false)
       setSelectedBackup(null)
@@ -88,10 +88,10 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
     try {
       const result = await window.electron.db.exportBackup(backup.filename)
       if (result) {
-        setStatusMessage({ type: 'success', text: '备份已导出到: ' + result })
+        setStatusMessage({ type: 'success', text: t('backup.exportedTo') + ': ' + result })
       }
     } catch (e: any) {
-      setStatusMessage({ type: 'error', text: '导出失败: ' + e.message })
+      setStatusMessage({ type: 'error', text: t('backup.exportFailed') + ': ' + e.message })
     }
   }
 
@@ -100,11 +100,11 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
     try {
       const result = await window.electron.db.importBackup()
       if (result) {
-        setStatusMessage({ type: 'success', text: '备份导入成功: ' + result.filename })
+        setStatusMessage({ type: 'success', text: t('backup.importSuccess') + ': ' + result.filename })
         await loadBackups()
       }
     } catch (e: any) {
-      setStatusMessage({ type: 'error', text: '导入失败: ' + e.message })
+      setStatusMessage({ type: 'error', text: t('backup.importFailed') + ': ' + e.message })
     } finally {
       setLoading(false)
     }
@@ -119,10 +119,10 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
     if (!selectedBackup) return
     try {
       await window.electron.db.deleteBackup(selectedBackup.filename)
-      setStatusMessage({ type: 'success', text: '备份已删除' })
+      setStatusMessage({ type: 'success', text: t('backup.deleted') })
       await loadBackups()
     } catch (e: any) {
-      setStatusMessage({ type: 'error', text: '删除失败: ' + e.message })
+      setStatusMessage({ type: 'error', text: t('backup.deleteFailed') + ': ' + e.message })
     } finally {
       setShowConfirmDelete(false)
       setSelectedBackup(null)
@@ -151,15 +151,15 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
       {/* Statistics */}
       <div className="grid grid-cols-3 gap-4">
         <Card>
-          <div className="text-sm text-gray-500 mb-1">备份数量</div>
+          <div className="text-sm text-gray-500 mb-1">{t('backup.totalBackups')}</div>
           <div className="text-2xl font-bold text-gray-900">{backups.length}</div>
         </Card>
         <Card>
-          <div className="text-sm text-gray-500 mb-1">最后备份时间</div>
+          <div className="text-sm text-gray-500 mb-1">{t('backup.lastBackup')}</div>
           <div className="text-lg font-semibold text-gray-900">{lastBackupTime}</div>
         </Card>
         <Card>
-          <div className="text-sm text-gray-500 mb-1">备份总大小</div>
+          <div className="text-sm text-gray-500 mb-1">{t('backup.totalSize')}</div>
           <div className="text-2xl font-bold text-gray-900">{formatSize(totalSize)}</div>
         </Card>
       </div>
@@ -204,7 +204,7 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
                     onClick={() => handleExport(backup)}
                     disabled={loading}
                   >
-                    导出
+                    {t('backup.export')}
                   </Button>
                   <Button
                     variant="danger"
@@ -212,7 +212,7 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
                     onClick={() => handleDelete(backup)}
                     disabled={loading}
                   >
-                    删除
+                    {t('backup.delete')}
                   </Button>
                 </div>
               </div>
@@ -222,66 +222,66 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
       </Card>
 
       {/* Create backup dialog */}
-      <Dialog open={showCreateDialog} onClose={() => setShowCreateDialog(false)} title="创建备份">
+      <Dialog open={showCreateDialog} onClose={() => setShowCreateDialog(false)} title={t('backup.createBackup')}>
         <div className="space-y-4">
           <Input
-            label="备份名称（可选）"
+            label={t('backup.backupName')}
             id="backup-name"
             value={customName}
             onChange={(e) => setCustomName(e.target.value)}
-            placeholder="留空则使用默认名称"
+            placeholder={t('backup.backupNamePlaceholder')}
           />
           <div className="flex gap-3 justify-end">
             <Button variant="secondary" onClick={() => setShowCreateDialog(false)}>
-              取消
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleCreate} disabled={loading}>
-              {loading ? '备份中...' : '确认备份'}
+              {loading ? t('backup.backingUp') : t('backup.confirmBackup')}
             </Button>
           </div>
         </div>
       </Dialog>
 
       {/* Confirm restore dialog */}
-      <Dialog open={showConfirmRestore} onClose={() => setShowConfirmRestore(false)} title="确认恢复">
+      <Dialog open={showConfirmRestore} onClose={() => setShowConfirmRestore(false)} title={t('backup.confirmRestore')}>
         <div className="space-y-4">
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <div className="flex items-center gap-2">
               <span className="text-amber-600">{'⚠️'}</span>
-              <span className="font-medium text-amber-800">警告</span>
+              <span className="font-medium text-amber-800">{t('backup.warning')}</span>
             </div>
             <p className="text-sm text-amber-700 mt-2">
-              恢复备份将覆盖当前所有数据，此操作不可撤销。建议先创建当前数据的备份。
+              {t('backup.restoreWarning')} {t('backup.restoreSuggestion')}
             </p>
           </div>
           <div>
-            <p className="text-gray-900">确定要恢复备份 <strong>{selectedBackup?.filename}</strong> 吗？</p>
+            <p className="text-gray-900">{t('backup.confirmRestoreText')} <strong>{selectedBackup?.filename}</strong> ?</p>
             <p className="text-sm text-gray-500 mt-1">
-              备份时间：{selectedBackup && formatTime(selectedBackup.created_at)}
+              {t('backup.createdAt')}：{selectedBackup && formatTime(selectedBackup.created_at)}
             </p>
           </div>
           <div className="flex gap-3 justify-end">
             <Button variant="secondary" onClick={() => setShowConfirmRestore(false)}>
-              取消
+              {t('common.cancel')}
             </Button>
             <Button variant="danger" onClick={confirmRestore} disabled={loading}>
-              {loading ? '恢复中...' : '确认恢复'}
+              {loading ? t('backup.restoring') : t('backup.confirmRestore')}
             </Button>
           </div>
         </div>
       </Dialog>
 
       {/* Confirm delete dialog */}
-      <Dialog open={showConfirmDelete} onClose={() => setShowConfirmDelete(false)} title="确认删除">
+      <Dialog open={showConfirmDelete} onClose={() => setShowConfirmDelete(false)} title={t('backup.confirmDelete')}>
         <div className="space-y-4">
-          <p className="text-gray-900">确定要删除备份 <strong>{selectedBackup?.filename}</strong> 吗？</p>
-          <p className="text-sm text-gray-500">此操作不可撤销。</p>
+          <p className="text-gray-900">{t('backup.confirmDeleteText')} <strong>{selectedBackup?.filename}</strong> ?</p>
+          <p className="text-sm text-gray-500">{t('backup.irreversible')}</p>
           <div className="flex gap-3 justify-end">
             <Button variant="secondary" onClick={() => setShowConfirmDelete(false)}>
-              取消
+              {t('common.cancel')}
             </Button>
             <Button variant="danger" onClick={confirmDelete}>
-              确认删除
+              {t('backup.confirmDelete')}
             </Button>
           </div>
         </div>

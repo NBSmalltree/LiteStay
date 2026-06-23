@@ -13,12 +13,6 @@ const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
   CHECKED_OUT: { bg: 'bg-gray-100', text: 'text-gray-600' },
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  IN_HOUSE: '在住',
-  PREBOOK: '预订',
-  CHECKED_OUT: '已退房',
-}
-
 type SortField = 'name' | 'order_count' | 'total_spent' | 'last_check_in'
 type SortDir = 'asc' | 'desc'
 
@@ -109,7 +103,7 @@ export default function GuestsPage({ refreshKey }: Props) {
   }
 
   const handleDelete = async (guestId: number, name: string) => {
-    if (!confirm(`确定删除客人「${name}」？`)) return
+    if (!confirm(t('guests.confirmDelete', { name }))) return
     await window.electron.db.deleteGuest(guestId)
     setLocalKey(k => k + 1)
   }
@@ -158,26 +152,26 @@ export default function GuestsPage({ refreshKey }: Props) {
           <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          新增客人
+          {t('guests.addGuest')}
         </Button>
       </div>
 
       {/* Stats cards */}
       <div className="grid grid-cols-4 gap-4">
         <Card padding="sm">
-          <div className="text-sm text-gray-500">总客人数</div>
+          <div className="text-sm text-gray-500">{t('guests.totalGuests')}</div>
           <div className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</div>
         </Card>
         <Card padding="sm">
-          <div className="text-sm text-gray-500">本月新客</div>
+          <div className="text-sm text-gray-500">{t('guests.newThisMonth')}</div>
           <div className="text-2xl font-bold text-blue-600 mt-1">{stats.newThisMonth}</div>
         </Card>
         <Card padding="sm">
-          <div className="text-sm text-gray-500">回头客</div>
+          <div className="text-sm text-gray-500">{t('guests.returningGuests')}</div>
           <div className="text-2xl font-bold text-green-600 mt-1">{stats.returning}</div>
         </Card>
         <Card padding="sm">
-          <div className="text-sm text-gray-500">回头率</div>
+          <div className="text-sm text-gray-500">{t('guests.returnRate')}</div>
           <div className="text-2xl font-bold text-amber-600 mt-1">{stats.returnRate}%</div>
         </Card>
       </div>
@@ -189,7 +183,7 @@ export default function GuestsPage({ refreshKey }: Props) {
         </svg>
         <Input
           type="text"
-          placeholder="搜索客人姓名、手机号..."
+          placeholder={t('guests.searchPlaceholder')}
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="pl-9 pr-9"
@@ -210,8 +204,8 @@ export default function GuestsPage({ refreshKey }: Props) {
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">
           {debouncedSearch.trim()
-            ? '没有找到匹配的客人'
-            : '暂无客人数据，点击「新增客人」添加第一条记录'}
+            ? t('guests.noMatchFound')
+            : t('guests.noGuests')}
         </div>
       ) : (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -219,20 +213,20 @@ export default function GuestsPage({ refreshKey }: Props) {
             <thead className="bg-gray-50 text-gray-600">
               <tr>
                 <th className="text-left px-4 py-3 font-medium cursor-pointer select-none hover:text-gray-900" onClick={() => handleSort('name')}>
-                  <div className="flex items-center gap-1">姓名 <SortIcon field="name" /></div>
+                  <div className="flex items-center gap-1">{t('guests.name')} <SortIcon field="name" /></div>
                 </th>
-                <th className="text-left px-4 py-3 font-medium">手机号</th>
+                <th className="text-left px-4 py-3 font-medium">{t('guests.phone')}</th>
                 <th className="text-center px-4 py-3 font-medium cursor-pointer select-none hover:text-gray-900" onClick={() => handleSort('order_count')}>
-                  <div className="flex items-center justify-center gap-1">入住次数 <SortIcon field="order_count" /></div>
+                  <div className="flex items-center justify-center gap-1">{t('guests.orderCount')} <SortIcon field="order_count" /></div>
                 </th>
                 <th className="text-right px-4 py-3 font-medium cursor-pointer select-none hover:text-gray-900" onClick={() => handleSort('total_spent')}>
-                  <div className="flex items-center justify-end gap-1">消费总额 <SortIcon field="total_spent" /></div>
+                  <div className="flex items-center justify-end gap-1">{t('guests.totalSpent')} <SortIcon field="total_spent" /></div>
                 </th>
                 <th className="text-left px-4 py-3 font-medium cursor-pointer select-none hover:text-gray-900" onClick={() => handleSort('last_check_in')}>
-                  <div className="flex items-center gap-1">最近入住 <SortIcon field="last_check_in" /></div>
+                  <div className="flex items-center gap-1">{t('guests.lastCheckIn')} <SortIcon field="last_check_in" /></div>
                 </th>
-                <th className="text-left px-4 py-3 font-medium">偏好房型</th>
-                <th className="text-right px-4 py-3 font-medium">操作</th>
+                <th className="text-left px-4 py-3 font-medium">{t('guests.preferredRoomType')}</th>
+                <th className="text-right px-4 py-3 font-medium">{t('guests.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -259,7 +253,7 @@ export default function GuestsPage({ refreshKey }: Props) {
                       <button
                         onClick={() => { setEditingGuest(guest); setShowForm(true) }}
                         className="p-1.5 rounded text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
-                        title="编辑"
+                        title={t('common.edit')}
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
@@ -268,7 +262,7 @@ export default function GuestsPage({ refreshKey }: Props) {
                       <button
                         onClick={() => handleDelete(guest.guest_id, guest.name)}
                         className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                        title="删除"
+                        title={t('common.delete')}
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
@@ -290,6 +284,7 @@ export default function GuestsPage({ refreshKey }: Props) {
         orders={guestOrders}
         onClose={() => { setShowDetail(false); setSelectedGuest(null); setGuestOrders([]) }}
         onEdit={handleEditFromDetail}
+        t={t}
       />
 
       {/* Guest Form Dialog */}
@@ -298,6 +293,7 @@ export default function GuestsPage({ refreshKey }: Props) {
         guest={editingGuest}
         onClose={() => { setShowForm(false); setEditingGuest(null) }}
         onSaved={() => { setShowForm(false); setEditingGuest(null); setLocalKey(k => k + 1) }}
+        t={t}
       />
     </div>
   )
@@ -305,45 +301,46 @@ export default function GuestsPage({ refreshKey }: Props) {
 
 /* --- Guest Detail Dialog --- */
 function GuestDetailDialog({
-  open, guest, orders, onClose, onEdit,
+  open, guest, orders, onClose, onEdit, t,
 }: {
   open: boolean
   guest: GuestWithStats | null
   orders: GuestOrder[]
   onClose: () => void
   onEdit: () => void
+  t: (key: string) => string
 }) {
   if (!guest) return null
 
   return (
-    <Dialog open={open} onClose={onClose} title="客人详情" maxWidth="lg">
+    <Dialog open={open} onClose={onClose} title={t('guests.guestDetail')} maxWidth="lg">
       <div className="grid grid-cols-2 gap-6">
         {/* Left: basic info */}
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-gray-900 pb-2 border-b border-gray-200">基本信息</h3>
+          <h3 className="text-sm font-semibold text-gray-900 pb-2 border-b border-gray-200">{t('guests.basicInfo')}</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-500">姓名</span>
+              <span className="text-gray-500">{t('guests.name')}</span>
               <span className="text-gray-900 font-medium">{guest.name}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">手机号</span>
+              <span className="text-gray-500">{t('guests.phone')}</span>
               <span className="text-gray-900">{guest.phone || '-'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">身份证</span>
+              <span className="text-gray-500">{t('guests.idCard')}</span>
               <span className="text-gray-900">{guest.id_card || '-'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">邮箱</span>
+              <span className="text-gray-500">{t('guests.email')}</span>
               <span className="text-gray-900">{guest.email || '-'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">备注</span>
+              <span className="text-gray-500">{t('guests.notes')}</span>
               <span className="text-gray-900">{guest.notes || '-'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">建档日期</span>
+              <span className="text-gray-500">{t('guests.createdAt')}</span>
               <span className="text-gray-900">{guest.created_at?.slice(0, 10) || '-'}</span>
             </div>
           </div>
@@ -351,24 +348,24 @@ function GuestDetailDialog({
 
         {/* Right: stats */}
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-gray-900 pb-2 border-b border-gray-200">消费统计</h3>
+          <h3 className="text-sm font-semibold text-gray-900 pb-2 border-b border-gray-200">{t('guests.consumptionStats')}</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-500">入住次数</span>
-              <span className="text-gray-900 font-medium">{guest.order_count} 次</span>
+              <span className="text-gray-500">{t('guests.orderCount')}</span>
+              <span className="text-gray-900 font-medium">{guest.order_count}{t('guests.timesUnit')}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">消费总额</span>
+              <span className="text-gray-500">{t('guests.totalSpent')}</span>
               <span className="text-gray-900 font-medium text-green-600">
                 {guest.total_spent > 0 ? `¥${guest.total_spent.toLocaleString()}` : '-'}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">最近入住</span>
+              <span className="text-gray-500">{t('guests.lastCheckIn')}</span>
               <span className="text-gray-900">{guest.last_check_in || '-'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">偏好房型</span>
+              <span className="text-gray-500">{t('guests.preferredRoomType')}</span>
               <span className="text-gray-900">{guest.preferred_room_type || '-'}</span>
             </div>
           </div>
@@ -377,20 +374,20 @@ function GuestDetailDialog({
 
       {/* Order history */}
       <div className="mt-6">
-        <h3 className="text-sm font-semibold text-gray-900 pb-2 border-b border-gray-200 mb-3">历史订单</h3>
+        <h3 className="text-sm font-semibold text-gray-900 pb-2 border-b border-gray-200 mb-3">{t('guests.orderHistory')}</h3>
         {orders.length === 0 ? (
-          <div className="text-center py-6 text-gray-400 text-sm">暂无订单记录</div>
+          <div className="text-center py-6 text-gray-400 text-sm">{t('guests.noOrderHistory')}</div>
         ) : (
           <div className="max-h-60 overflow-auto border border-gray-200 rounded-lg">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600 sticky top-0">
                 <tr>
-                  <th className="text-left px-3 py-2 font-medium">房号</th>
-                  <th className="text-left px-3 py-2 font-medium">房型</th>
-                  <th className="text-left px-3 py-2 font-medium">入住</th>
-                  <th className="text-left px-3 py-2 font-medium">退房</th>
-                  <th className="text-left px-3 py-2 font-medium">状态</th>
-                  <th className="text-right px-3 py-2 font-medium">房费</th>
+                  <th className="text-left px-3 py-2 font-medium">{t('guests.roomNumber')}</th>
+                  <th className="text-left px-3 py-2 font-medium">{t('guests.roomType')}</th>
+                  <th className="text-left px-3 py-2 font-medium">{t('guests.checkIn')}</th>
+                  <th className="text-left px-3 py-2 font-medium">{t('guests.checkOut')}</th>
+                  <th className="text-left px-3 py-2 font-medium">{t('guests.status')}</th>
+                  <th className="text-right px-3 py-2 font-medium">{t('guests.roomFee')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -404,7 +401,9 @@ function GuestDetailDialog({
                       <td className="px-3 py-2 text-gray-600">{order.check_out_date}</td>
                       <td className="px-3 py-2">
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${style.bg} ${style.text}`}>
-                          {STATUS_LABELS[order.status]}
+                          {order.status === 'IN_HOUSE' ? t('guests.statusInHouse') :
+                           order.status === 'PREBOOK' ? t('guests.statusPrebook') :
+                           t('guests.statusCheckedOut')}
                         </span>
                       </td>
                       <td className="px-3 py-2 text-right text-gray-900">¥{order.actual_amount}</td>
@@ -419,8 +418,8 @@ function GuestDetailDialog({
 
       {/* Actions */}
       <div className="flex justify-end gap-3 pt-4">
-        <Button variant="secondary" onClick={onClose}>关闭</Button>
-        <Button onClick={onEdit}>编辑信息</Button>
+        <Button variant="secondary" onClick={onClose}>{t('common.close')}</Button>
+        <Button onClick={onEdit}>{t('guests.editInfo')}</Button>
       </div>
     </Dialog>
   )
@@ -428,12 +427,13 @@ function GuestDetailDialog({
 
 /* --- Guest Form Dialog --- */
 function GuestFormDialog({
-  open, guest, onClose, onSaved,
+  open, guest, onClose, onSaved, t,
 }: {
   open: boolean
   guest: Guest | null
   onClose: () => void
   onSaved: () => void
+  t: (key: string) => string
 }) {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -466,7 +466,7 @@ function GuestFormDialog({
 
   const handleSave = async () => {
     setError('')
-    if (!name.trim()) { setError('请输入客人姓名'); return }
+    if (!name.trim()) { setError(t('guests.nameRequired')); return }
 
     setSaving(true)
     try {
@@ -489,53 +489,53 @@ function GuestFormDialog({
       }
       onSaved()
     } catch (e: any) {
-      setError(e?.message || '保存失败')
+      setError(e?.message || t('guests.saveFailed'))
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <Dialog open={open} onClose={onClose} title={isEdit ? '编辑客人' : '新增客人'} maxWidth="sm">
+    <Dialog open={open} onClose={onClose} title={isEdit ? t('guests.editGuest') : t('guests.addGuest')} maxWidth="sm">
       <div className="space-y-4">
         <Input
-          label="姓名"
+          label={t('guests.name')}
           id="guest-form-name"
           value={name}
           onChange={e => { setName(e.target.value); setError('') }}
-          placeholder="客人姓名"
+          placeholder={t('guests.namePlaceholder')}
         />
         <div className="grid grid-cols-2 gap-4">
           <Input
-            label="手机号"
+            label={t('guests.phone')}
             id="guest-form-phone"
             value={phone}
             onChange={e => setPhone(e.target.value)}
-            placeholder="可选"
+            placeholder={t('guests.optional')}
           />
           <Input
-            label="身份证"
+            label={t('guests.idCard')}
             id="guest-form-idcard"
             value={idCard}
             onChange={e => setIdCard(e.target.value)}
-            placeholder="可选"
+            placeholder={t('guests.optional')}
           />
         </div>
         <Input
-          label="邮箱"
+          label={t('guests.email')}
           id="guest-form-email"
           value={email}
           onChange={e => setEmail(e.target.value)}
-          placeholder="可选"
+          placeholder={t('guests.optional')}
         />
         <div className="space-y-1.5">
-          <label htmlFor="guest-form-notes" className="block text-sm font-medium text-gray-700">备注</label>
+          <label htmlFor="guest-form-notes" className="block text-sm font-medium text-gray-700">{t('guests.notes')}</label>
           <textarea
             id="guest-form-notes"
             rows={2}
             value={notes}
             onChange={e => setNotes(e.target.value)}
-            placeholder="特殊需求、偏好..."
+            placeholder={t('guests.notesPlaceholder')}
             className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900
               placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500
               focus:border-primary-500 transition-colors resize-none"
@@ -545,8 +545,8 @@ function GuestFormDialog({
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         <div className="flex justify-end gap-3 pt-2">
-          <Button variant="secondary" onClick={onClose}>取消</Button>
-          <Button onClick={handleSave} disabled={saving}>{saving ? '保存中...' : isEdit ? '保存' : '添加'}</Button>
+          <Button variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button onClick={handleSave} disabled={saving}>{saving ? t('guests.saving') : isEdit ? t('common.save') : t('guests.add')}</Button>
         </div>
       </div>
     </Dialog>

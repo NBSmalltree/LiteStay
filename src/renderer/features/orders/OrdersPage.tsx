@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Select } from '../../components'
+import { Button, Input, Select, DatePicker } from '../../components'
 import type { Order, Room, RoomType } from '../../../shared/types'
 
 const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
@@ -334,17 +334,15 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter, ini
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <input
-                  type="date"
+                <DatePicker
                   value={search.checkInFrom}
-                  onChange={e => setSearch(prev => ({ ...prev, checkInFrom: e.target.value, checkInPreset: null }))}
+                  onChange={(value) => setSearch(prev => ({ ...prev, checkInFrom: value, checkInPreset: null }))}
                   className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                 />
                 <span className="text-sm text-gray-400">{t('finance.to')}</span>
-                <input
-                  type="date"
+                <DatePicker
                   value={search.checkInTo}
-                  onChange={e => setSearch(prev => ({ ...prev, checkInTo: e.target.value, checkInPreset: null }))}
+                  onChange={(value) => setSearch(prev => ({ ...prev, checkInTo: value, checkInPreset: null }))}
                   className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                 />
               </div>
@@ -377,17 +375,15 @@ export default function OrdersPage({ onEditOrder, refreshKey, initialFilter, ini
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <input
-                  type="date"
+                <DatePicker
                   value={search.checkOutFrom}
-                  onChange={e => setSearch(prev => ({ ...prev, checkOutFrom: e.target.value, checkOutPreset: null }))}
+                  onChange={(value) => setSearch(prev => ({ ...prev, checkOutFrom: value, checkOutPreset: null }))}
                   className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                 />
                 <span className="text-sm text-gray-400">{t('finance.to')}</span>
-                <input
-                  type="date"
+                <DatePicker
                   value={search.checkOutTo}
-                  onChange={e => setSearch(prev => ({ ...prev, checkOutTo: e.target.value, checkOutPreset: null }))}
+                  onChange={(value) => setSearch(prev => ({ ...prev, checkOutTo: value, checkOutPreset: null }))}
                   className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                 />
               </div>

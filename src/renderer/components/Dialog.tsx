@@ -37,11 +37,11 @@ export function Dialog({ open, onClose, title, children, footer, maxWidth = 'md'
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       {/* Dialog container */}
       <div
-        className={`relative ${maxWidths[maxWidth]} w-full mx-4 max-h-[90vh] flex flex-col`}
-        style={{ zIndex: 100 }}
+        className={`relative ${maxWidths[maxWidth]} w-full mx-4 flex flex-col`}
+        style={{ zIndex: 100, maxHeight: '90vh' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-white rounded-2xl shadow-dialog flex flex-col max-h-full">
+        <div className="bg-white rounded-2xl shadow-dialog flex flex-col" style={{ maxHeight: '100%' }}>
           {/* Header - absolutely positioned button to avoid any overlap */}
           <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h2 className="text-lg font-semibold text-gray-900 pr-8">{title}</h2>
@@ -62,7 +62,7 @@ export function Dialog({ open, onClose, title, children, footer, maxWidth = 'md'
             </button>
           </div>
           {/* Body - scrollable */}
-          <div className="flex-1 overflow-y-auto px-6 py-5 min-h-0">
+          <div className={`flex-1 px-6 py-5 ${footer ? 'overflow-y-auto' : ''}`} style={{ minHeight: 0 }}>
             {children}
           </div>
           {/* Footer - fixed at bottom */}

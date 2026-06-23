@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Card, Select } from '../../components'
+import { useTranslation } from 'react-i18next'
 import type { Room, Order, RoomType } from '../../../shared/types'
 
 const todayStr = new Date().toISOString().slice(0, 10)
@@ -9,7 +10,7 @@ type RoomStatus = 'vacant' | 'in_house' | 'prebook' | 'checking_in' | 'cleaning'
 interface RoomStatusInfo {
   status: RoomStatus
   color: 'green' | 'red' | 'blue' | 'orange'
-  label: string
+  labelKey: string
   guest?: string
 }
 
@@ -20,14 +21,6 @@ const STATUS_CONFIG: Record<RoomStatus, { bg: string; border: string; text: stri
   checking_in: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', badge: 'bg-blue-100', badgeText: 'text-blue-800' },
   cleaning: { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', badge: 'bg-orange-100', badgeText: 'text-orange-800' },
 }
-
-const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
-  { value: 'all', label: '全部' },
-  { value: 'vacant', label: '空房' },
-  { value: 'in_house', label: '在住' },
-  { value: 'prebook', label: '预订' },
-  { value: 'cleaning', label: '待清洁' },
-]
 
 const getRoomStatus = (room: Room, orders: Order[]): RoomStatusInfo => {
   const activeOrder = orders.find(o =>
@@ -43,17 +36,17 @@ const getRoomStatus = (room: Room, orders: Order[]): RoomStatusInfo => {
       o.status === 'CHECKED_OUT' &&
       o.check_out_date === todayStr
     )
-    if (todayCheckout) return { status: 'cleaning', color: 'orange', label: '待清洁' }
-    return { status: 'vacant', color: 'green', label: '空房' }
+    if (todayCheckout) return { status: 'cleaning', color: 'orange', labelKey: 'roomOverview.cleaning' }
+    return { status: 'vacant', color: 'green', labelKey: 'roomOverview.vacant' }
   }
 
-  if (activeOrder.status === 'IN_HOUSE') return { status: 'in_house', color: 'red', label: '在住', guest: activeOrder.guest_name }
+  if (activeOrder.status === 'IN_HOUSE') return { status: 'in_house', color: 'red', labelKey: 'roomOverview.inHouse', guest: activeOrder.guest_name }
   if (activeOrder.status === 'PREBOOK') {
-    if (activeOrder.check_in_date === todayStr) return { status: 'checking_in', color: 'blue', label: '预订', guest: activeOrder.guest_name }
-    return { status: 'prebook', color: 'blue', label: '预订', guest: activeOrder.guest_name }
+    if (activeOrder.check_in_date === todayStr) return { status: 'checking_in', color: 'blue', labelKey: 'roomOverview.prebook', guest: activeOrder.guest_name }
+    return { status: 'prebook', color: 'blue', labelKey: 'roomOverview.prebook', guest: activeOrder.guest_name }
   }
 
-  return { status: 'vacant', color: 'green', label: '空房' }
+  return { status: 'vacant', color: 'green', labelKey: 'roomOverview.vacant' }
 }
 
 interface Props {
@@ -63,6 +56,7 @@ interface Props {
 }
 
 export default function RoomStatusOverview({ onCheckIn, onViewOrder, refreshKey }: Props) {
+  const { t } = useTranslation()
   const [rooms, setRooms] = useState<Room[]>([])
   const [orders, setOrders] = useState<Order[]>([])
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
@@ -119,30 +113,30 @@ export default function RoomStatusOverview({ onCheckIn, onViewOrder, refreshKey 
     <div className="p-6 h-full flex flex-col">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">房态总览</h1>
-        <p className="mt-1 text-sm text-gray-500">实时查看所有房间状态</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('roomOverview.title')}</h1>
+        <p className="mt-1 text-sm text-gray-500">{t('roomOverview.subtitle')}</p>
       </div>
 
       {/* Statistics Bar */}
       <div className="grid grid-cols-5 gap-4 mb-6">
         <Card padding="sm" className="flex flex-col items-center justify-center">
-          <span className="text-xs text-gray-500 mb-1">总房间</span>
+          <span className="text-xs text-gray-500 mb-1">{t('roomOverview.totalRooms')}</span>
           <span className="text-2xl font-bold text-gray-900">{stats.total}</span>
         </Card>
         <Card padding="sm" className="flex flex-col items-center justify-center">
-          <span className="text-xs text-gray-500 mb-1">空房</span>
+          <span className="text-xs text-gray-500 mb-1">{t('roomOverview.vacant')}</span>
           <span className="text-2xl font-bold text-green-600">{stats.vacant}</span>
         </Card>
         <Card padding="sm" className="flex flex-col items-center justify-center">
-          <span className="text-xs text-gray-500 mb-1">在住</span>
+          <span className="text-xs text-gray-500 mb-1">{t('roomOverview.inHouse')}</span>
           <span className="text-2xl font-bold text-red-600">{stats.in_house}</span>
         </Card>
         <Card padding="sm" className="flex flex-col items-center justify-center">
-          <span className="text-xs text-gray-500 mb-1">预订</span>
+          <span className="text-xs text-gray-500 mb-1">{t('roomOverview.prebook')}</span>
           <span className="text-2xl font-bold text-blue-600">{stats.prebook}</span>
         </Card>
         <Card padding="sm" className="flex flex-col items-center justify-center">
-          <span className="text-xs text-gray-500 mb-1">待清洁</span>
+          <span className="text-xs text-gray-500 mb-1">{t('roomOverview.cleaning')}</span>
           <span className="text-2xl font-bold text-orange-500">{stats.cleaning}</span>
         </Card>
       </div>
@@ -154,9 +148,11 @@ export default function RoomStatusOverview({ onCheckIn, onViewOrder, refreshKey 
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
-            {STATUS_FILTER_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
+            <option value="all">{t('roomOverview.filterAllStatus')}</option>
+            <option value="vacant">{t('roomOverview.vacant')}</option>
+            <option value="in_house">{t('roomOverview.inHouse')}</option>
+            <option value="prebook">{t('roomOverview.prebook')}</option>
+            <option value="cleaning">{t('roomOverview.cleaning')}</option>
           </Select>
         </div>
         <div className="w-40">
@@ -164,7 +160,7 @@ export default function RoomStatusOverview({ onCheckIn, onViewOrder, refreshKey 
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
           >
-            <option value="all">所有房型</option>
+            <option value="all">{t('roomOverview.filterAllRoomTypes')}</option>
             {roomTypes.map(t => (
               <option key={t.type_id} value={t.type_name}>{t.type_name}</option>
             ))}
@@ -175,7 +171,7 @@ export default function RoomStatusOverview({ onCheckIn, onViewOrder, refreshKey 
       {/* Room Grid */}
       {filteredRooms.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
-          暂无房间数据
+          {t('roomOverview.noRooms')}
         </div>
       ) : (
         <div className="flex-1 overflow-auto">
@@ -193,7 +189,7 @@ export default function RoomStatusOverview({ onCheckIn, onViewOrder, refreshKey 
                     <div className="text-lg font-bold text-gray-900 mb-1">{room.room_number}</div>
                     <div className="text-xs text-gray-500 mb-2">{room.room_type}</div>
                     <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.badge} ${config.badgeText}`}>
-                      {statusInfo.label}
+                      {t(statusInfo.labelKey)}
                     </div>
                     {statusInfo.guest && (
                       <div className="mt-2 text-sm text-gray-700 font-medium">{statusInfo.guest}</div>

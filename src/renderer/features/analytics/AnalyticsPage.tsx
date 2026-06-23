@@ -36,7 +36,8 @@ const SOURCE_COLORS: Record<string, string> = {
 }
 
 export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language === 'zh' ? 'zh-CN' : 'en-US'
   const [occupancy, setOccupancy] = useState<DailyOccupancy[]>([])
   const [revenue, setRevenue] = useState<DailyRevenueByType[]>([])
   const [roomTypeData, setRoomTypeData] = useState<RoomTypeAnalysis[]>([])
@@ -178,9 +179,9 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
   }, [sourceTrend])
 
   // Format revenue display
-  function fmtRevenue(n: number): string {
-    if (n >= 10000) return `${(n / 10000).toFixed(1)}万`
-    return n.toLocaleString('zh-CN')
+  function fmtRevenue(n: number, unitKey: string): string {
+    if (n >= 10000) return `${(n / 10000).toFixed(1)}${t(unitKey)}`
+    return n.toLocaleString(locale)
   }
 
   return (
@@ -199,41 +200,41 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
         </Card>
         <Card padding="md" className="flex flex-col items-center justify-center">
           <span className="text-xs text-gray-500 mb-1">{t('analytics.monthlyRevenue')}</span>
-          <span className="text-3xl font-bold text-green-600">¥{fmtRevenue(revenueGrowth.current_month)}</span>
+          <span className="text-3xl font-bold text-green-600">¥{fmtRevenue(revenueGrowth.current_month, 'analytics.10kUnit')}</span>
           {revenueGrowth.last_month > 0 && (
             <span className={`text-xs mt-1 ${revenueGrowth.growth_rate >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               {revenueGrowth.growth_rate >= 0 ? '↑' : '↓'}
               {' '}{Math.abs(revenueGrowth.growth_rate)}%
-              <span className="text-gray-500"> 较上月</span>
+              <span className="text-gray-500"> {t('analytics.comparedToLastMonth')}</span>
             </span>
           )}
         </Card>
         <Card padding="md" className="flex flex-col items-center justify-center">
-          <span className="text-xs text-gray-500 mb-1">本月入住率</span>
+          <span className="text-xs text-gray-500 mb-1">{t('analytics.monthlyOccupancy')}</span>
           <span className="text-3xl font-bold text-blue-600">{monthOccupancy}%</span>
         </Card>
         <Card padding="md" className="flex flex-col items-center justify-center">
-          <span className="text-xs text-gray-500 mb-1">平均房价 (ADR)</span>
+          <span className="text-xs text-gray-500 mb-1">{t('analytics.adr')}</span>
           <span className="text-3xl font-bold text-orange-500">¥{adrRevparData.adr.toLocaleString()}</span>
         </Card>
       </div>
 
       {/* ADR/RevPAR Core Metrics */}
       <div>
-        <h3 className="text-lg font-semibold mb-4">核心经营指标</h3>
+        <h3 className="text-lg font-semibold mb-4">{t('analytics.coreMetrics')}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <Card padding="md" className="flex flex-col items-center justify-center">
-            <span className="text-xs text-gray-500 mb-1">ADR（平均房价）</span>
+            <span className="text-xs text-gray-500 mb-1">{t('analytics.adr')}</span>
             <span className="text-3xl font-bold text-blue-600">¥{adrRevparData.adr.toLocaleString()}</span>
             <span className="text-xs text-gray-400 mt-1">Average Daily Rate</span>
           </Card>
           <Card padding="md" className="flex flex-col items-center justify-center">
-            <span className="text-xs text-gray-500 mb-1">RevPAR（每房收益）</span>
+            <span className="text-xs text-gray-500 mb-1">{t('analytics.revpar')}</span>
             <span className="text-3xl font-bold text-purple-600">¥{adrRevparData.revpar.toLocaleString()}</span>
             <span className="text-xs text-gray-400 mt-1">Revenue Per Available Room</span>
           </Card>
           <Card padding="md" className="flex flex-col items-center justify-center">
-            <span className="text-xs text-gray-500 mb-1">入住率</span>
+            <span className="text-xs text-gray-500 mb-1">{t('analytics.occupancyRate')}</span>
             <span className="text-3xl font-bold text-green-600">{adrRevparData.occupancy_rate}%</span>
             <span className="text-xs text-gray-400 mt-1">Occupancy Rate</span>
           </Card>
@@ -241,25 +242,25 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
 
         {/* ADR/RevPAR Detail Card */}
         <Card padding="md" className="mb-4">
-          <h4 className="text-sm font-medium text-gray-500 mb-3">指标详情</h4>
+          <h4 className="text-sm font-medium text-gray-500 mb-3">{t('analytics.metricDetails')}</h4>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <div className="flex justify-between py-1">
-                <span className="text-gray-600">总房费收入</span>
+                <span className="text-gray-600">{t('analytics.totalRoomFee')}</span>
                 <span className="font-medium">¥{adrRevparData.total_room_fee.toLocaleString()}</span>
               </div>
               <div className="flex justify-between py-1">
-                <span className="text-gray-600">已售房间夜数</span>
-                <span className="font-medium">{adrRevparData.sold_room_nights} 夜</span>
+                <span className="text-gray-600">{t('analytics.soldRoomNights')}</span>
+                <span className="font-medium">{adrRevparData.sold_room_nights} {t('analytics.nightsUnit')}</span>
               </div>
             </div>
             <div>
               <div className="flex justify-between py-1">
-                <span className="text-gray-600">可售房间夜数</span>
-                <span className="font-medium">{adrRevparData.available_room_nights} 夜</span>
+                <span className="text-gray-600">{t('analytics.availableRoomNights')}</span>
+                <span className="font-medium">{adrRevparData.available_room_nights} {t('analytics.nightsUnit')}</span>
               </div>
               <div className="flex justify-between py-1">
-                <span className="text-gray-600">入住率</span>
+                <span className="text-gray-600">{t('analytics.occupancyRate')}</span>
                 <span className="font-medium">{adrRevparData.occupancy_rate}%</span>
               </div>
             </div>
@@ -268,7 +269,7 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
 
         {/* ADR/RevPAR 30-day Trend */}
         <Card padding="md" className="mb-4">
-          <h4 className="text-sm font-medium text-gray-500 mb-2">30天指标趋势</h4>
+          <h4 className="text-sm font-medium text-gray-500 mb-2">{t('analytics.adrTrend')}</h4>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={adrRevparTrend} margin={{ top: 4, right: 16, left: -12, bottom: 0 }}>
@@ -288,10 +289,10 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
                 />
                 <Tooltip
                   formatter={(value: any, name: any) => {
-                    if (name === '入住率') return [`${value}%`, name]
+                    if (name === t('analytics.occupancyRate')) return [`${value}%`, name]
                     return [`¥${value}`, name]
                   }}
-                  labelFormatter={(label: any) => `日期: ${label}`}
+                  labelFormatter={(label: any) => `${t('analytics.dateLabel')}: ${label}`}
                   contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
@@ -317,7 +318,7 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
                   yAxisId="right"
                   type="monotone"
                   dataKey="occupancy_rate"
-                  name="入住率"
+                  name={t('analytics.occupancyRate')}
                   stroke="#10B981"
                   strokeWidth={2}
                   strokeDasharray="5 5"
@@ -330,7 +331,7 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
 
         {/* ADR by Room Type Bar Chart */}
         <Card padding="md">
-          <h4 className="text-sm font-medium text-gray-500 mb-2">房型 ADR 对比</h4>
+          <h4 className="text-sm font-medium text-gray-500 mb-2">{t('analytics.adrByRoomType')}</h4>
           <div className="h-60">
             {adrByRoomType.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -342,14 +343,14 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
                     tick={{ fontSize: 11, fill: '#6b7280' }}
                   />
                   <Tooltip
-                    formatter={(value: any) => [`¥${Number(value).toLocaleString('zh-CN')}`, '平均ADR']}
+                    formatter={(value: any) => [`¥${Number(value).toLocaleString(locale)}`, t('analytics.avgADR')]}
                     contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
                   />
-                  <Bar dataKey="avg_adr" name="平均ADR" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="avg_adr" name={t('analytics.avgADR')} fill="#8B5CF6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 text-sm">暂无数据</div>
+              <div className="h-full flex items-center justify-center text-gray-400 text-sm">{t('common.noData')}</div>
             )}
           </div>
         </Card>
@@ -357,7 +358,7 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
 
       {/* 30-day Occupancy Trend Line Chart */}
       <Card padding="md">
-        <h3 className="text-sm font-semibold text-gray-700 mb-4">📈 30天入住率趋势</h3>
+        <h3 className="text-sm font-semibold text-gray-700 mb-4">📈 {t('analytics.occupancyTrend')}</h3>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={occupancy} margin={{ top: 4, right: 16, left: -12, bottom: 0 }}>
@@ -369,8 +370,8 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
                 tick={{ fontSize: 11, fill: '#6b7280' }}
               />
               <Tooltip
-                formatter={(value: any) => [`${value}%`, '入住率']}
-                labelFormatter={(label: any) => `日期: ${label}`}
+                formatter={(value: any) => [`${value}%`, t('analytics.occupancyRate')]}
+                labelFormatter={(label: any) => `${t('analytics.dateLabel')}: ${label}`}
                 contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
               />
               <Line
@@ -380,7 +381,7 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
                 strokeWidth={2}
                 dot={{ r: 2, fill: '#6366f1' }}
                 activeDot={{ r: 5 }}
-                name="入住率"
+                name={t('analytics.occupancyRate')}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -389,19 +390,19 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
 
       {/* 30-day Revenue Trend Stacked Bar Chart */}
       <Card padding="md">
-        <h3 className="text-sm font-semibold text-gray-700 mb-4">💰 30天收益趋势</h3>
+        <h3 className="text-sm font-semibold text-gray-700 mb-4">💰 {t('analytics.revenueTrend')}</h3>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={revenueBarData} margin={{ top: 4, right: 16, left: -12, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6b7280' }} interval={4} />
               <YAxis
-                tickFormatter={(v: number) => `¥${v >= 10000 ? (v / 10000).toFixed(0) + '万' : v}`}
+                tickFormatter={(v: number) => `¥${v >= 10000 ? (v / 10000).toFixed(0) + t('analytics.10kUnit') : v}`}
                 tick={{ fontSize: 11, fill: '#6b7280' }}
               />
               <Tooltip
-                formatter={(value: any, name: any) => [`¥${Number(value).toLocaleString('zh-CN')}`, name]}
-                labelFormatter={(label: any) => `日期: ${label}`}
+                formatter={(value: any, name: any) => [`¥${Number(value).toLocaleString(locale)}`, name]}
+                labelFormatter={(label: any) => `${t('analytics.dateLabel')}: ${label}`}
                 contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
@@ -422,7 +423,7 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
       {/* Room Type Analysis Pie Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card padding="md">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">🏠 各房型收益占比</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">🏠 {t('analytics.revenueShare')}</h3>
           <div className="h-64">
             {revenuePie.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -445,18 +446,18 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value: any) => [`¥${Number(value).toLocaleString('zh-CN')}`, '收益']}
+                    formatter={(value: any) => [`¥${Number(value).toLocaleString(locale)}`, t('analytics.revenue')]}
                     contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
                   />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 text-sm">暂无数据</div>
+              <div className="h-full flex items-center justify-center text-gray-400 text-sm">{t('common.noData')}</div>
             )}
           </div>
         </Card>
         <Card padding="md">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">📋 各房型订单数占比</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">📋 {t('analytics.orderShare')}</h3>
           <div className="h-64">
             {orderPie.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -479,13 +480,13 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value: any) => [`${value}单`, '订单数']}
+                    formatter={(value: any) => [`${value}${t('analytics.ordersUnit')}`, t('analytics.orderCount')]}
                     contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
                   />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 text-sm">暂无数据</div>
+              <div className="h-full flex items-center justify-center text-gray-400 text-sm">{t('common.noData')}</div>
             )}
           </div>
         </Card>
@@ -493,13 +494,13 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
 
       {/* Source Analysis Section */}
       <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-4">客人来源分析</h2>
+        <h2 className="text-lg font-bold text-gray-900 mb-4">{t('analytics.sourceAnalysis')}</h2>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Source Pie Chart */}
         <Card padding="md">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">订单来源占比</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">{t('analytics.sourceRatio')}</h3>
           <div className="h-64">
             {sourceStats.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -523,21 +524,21 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value: any) => [`${value}单`, '订单数']}
+                    formatter={(value: any) => [`${value}${t('analytics.ordersUnit')}`, t('analytics.orderCount')]}
                     labelFormatter={(label: any) => SOURCE_LABELS[label] || label}
                     contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
                   />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 text-sm">暂无数据</div>
+              <div className="h-full flex items-center justify-center text-gray-400 text-sm">{t('common.noData')}</div>
             )}
           </div>
         </Card>
 
         {/* Source Revenue Bar Chart */}
         <Card padding="md">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">来源收益对比</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">{t('analytics.sourceRevenue')}</h3>
           <div className="h-64">
             {sourceStats.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -549,19 +550,19 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
                     tick={{ fontSize: 11, fill: '#6b7280' }}
                   />
                   <YAxis
-                    tickFormatter={(v: number) => `¥${v >= 10000 ? (v / 10000).toFixed(0) + '万' : v}`}
+                    tickFormatter={(v: number) => `¥${v >= 10000 ? (v / 10000).toFixed(0) + t('analytics.10kUnit') : v}`}
                     tick={{ fontSize: 11, fill: '#6b7280' }}
                   />
                   <Tooltip
-                    formatter={(value: any) => [`¥${Number(value).toLocaleString('zh-CN')}`, '总收益']}
+                    formatter={(value: any) => [`¥${Number(value).toLocaleString(locale)}`, t('analytics.totalRevenue')]}
                     labelFormatter={(label: any) => SOURCE_LABELS[label] || label}
                     contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
                   />
-                  <Bar dataKey="total_revenue" name="总收益" fill="#8B5CF6" />
+                  <Bar dataKey="total_revenue" name={t('analytics.totalRevenue')} fill="#8B5CF6" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 text-sm">暂无数据</div>
+              <div className="h-full flex items-center justify-center text-gray-400 text-sm">{t('common.noData')}</div>
             )}
           </div>
         </Card>
@@ -569,7 +570,7 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
 
       {/* Source Trend Stacked Area Chart */}
       <Card padding="md">
-        <h3 className="text-sm font-semibold text-gray-700 mb-4">来源趋势（近6个月）</h3>
+        <h3 className="text-sm font-semibold text-gray-700 mb-4">{t('analytics.sourceTrend')}</h3>
         <div className="h-64">
           {sourceTrendData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
@@ -578,19 +579,19 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#6b7280' }} />
                 <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} />
                 <Tooltip
-                  formatter={(value: any) => [`${value}单`, '']}
+                  formatter={(value: any) => [`${value}${t('analytics.ordersUnit')}`, '']}
                   contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Area type="monotone" dataKey="ctrip" name="携程" stackId="1" fill="#FF6B6B" stroke="#FF6B6B" fillOpacity={0.6} />
-                <Area type="monotone" dataKey="meituan" name="美团" stackId="1" fill="#FFD93D" stroke="#FFD93D" fillOpacity={0.6} />
-                <Area type="monotone" dataKey="direct" name="直接预订" stackId="1" fill="#6BCB77" stroke="#6BCB77" fillOpacity={0.6} />
-                <Area type="monotone" dataKey="returning" name="回头客" stackId="1" fill="#4D96FF" stroke="#4D96FF" fillOpacity={0.6} />
-                <Area type="monotone" dataKey="other" name="其他" stackId="1" fill="#9CA3AF" stroke="#9CA3AF" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="ctrip" name={t('sources.ctrip')} stackId="1" fill="#FF6B6B" stroke="#FF6B6B" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="meituan" name={t('sources.meituan')} stackId="1" fill="#FFD93D" stroke="#FFD93D" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="direct" name={t('sources.direct')} stackId="1" fill="#6BCB77" stroke="#6BCB77" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="returning" name={t('sources.returning')} stackId="1" fill="#4D96FF" stroke="#4D96FF" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="other" name={t('sources.other')} stackId="1" fill="#9CA3AF" stroke="#9CA3AF" fillOpacity={0.6} />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-full flex items-center justify-center text-gray-400 text-sm">暂无数据</div>
+            <div className="h-full flex items-center justify-center text-gray-400 text-sm">{t('common.noData')}</div>
           )}
         </div>
       </Card>
@@ -598,16 +599,16 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
       {/* Source Detail Table */}
       {sourceStats.length > 0 && (
         <Card padding="md">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">来源详细数据</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">{t('analytics.sourceDetail')}</h3>
           <div className="border border-gray-200 rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
-                  <th className="text-left px-4 py-2 font-medium">来源</th>
-                  <th className="text-right px-4 py-2 font-medium">订单数</th>
-                  <th className="text-right px-4 py-2 font-medium">占比</th>
-                  <th className="text-right px-4 py-2 font-medium">总收益</th>
-                  <th className="text-right px-4 py-2 font-medium">平均客单价</th>
+                  <th className="text-left px-4 py-2 font-medium">{t('analytics.source')}</th>
+                  <th className="text-right px-4 py-2 font-medium">{t('analytics.orderCount')}</th>
+                  <th className="text-right px-4 py-2 font-medium">{t('analytics.ratio')}</th>
+                  <th className="text-right px-4 py-2 font-medium">{t('analytics.totalRevenue')}</th>
+                  <th className="text-right px-4 py-2 font-medium">{t('analytics.avgGuestSpend')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -619,8 +620,8 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
                       <td className="px-4 py-2 text-gray-900 font-medium">{SOURCE_LABELS[stat.source] || stat.source}</td>
                       <td className="px-4 py-2 text-right text-gray-700">{stat.order_count}</td>
                       <td className="px-4 py-2 text-right text-gray-700">{percentage}%</td>
-                      <td className="px-4 py-2 text-right text-gray-900">¥{(stat.total_revenue || 0).toLocaleString('zh-CN')}</td>
-                      <td className="px-4 py-2 text-right text-gray-700">¥{Math.round(stat.avg_revenue || 0).toLocaleString('zh-CN')}</td>
+                      <td className="px-4 py-2 text-right text-gray-900">¥{(stat.total_revenue || 0).toLocaleString(locale)}</td>
+                      <td className="px-4 py-2 text-right text-gray-700">¥{Math.round(stat.avg_revenue || 0).toLocaleString(locale)}</td>
                     </tr>
                   )
                 })}
@@ -632,13 +633,13 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
 
       {/* Revenue Analytics Section */}
       <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-4">收益分析报表</h2>
+        <h2 className="text-lg font-bold text-gray-900 mb-4">{t('analytics.revenueAnalytics')}</h2>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Monthly Revenue Stacked Bar Chart */}
         <Card padding="md">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">月度收益构成</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">{t('analytics.monthlyRevenueBreakdown')}</h3>
           <div className="h-64">
             {monthlyRevenue.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -646,28 +647,28 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#6b7280' }} />
                   <YAxis
-                    tickFormatter={(v: number) => `¥${v >= 10000 ? (v / 10000).toFixed(0) + '万' : v}`}
+                    tickFormatter={(v: number) => `¥${v >= 10000 ? (v / 10000).toFixed(0) + t('analytics.10kUnit') : v}`}
                     tick={{ fontSize: 11, fill: '#6b7280' }}
                   />
                   <Tooltip
-                    formatter={(value: any) => [`¥${Number(value).toLocaleString('zh-CN')}`]}
+                    formatter={(value: any) => [`¥${Number(value).toLocaleString(locale)}`]}
                     contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
                   />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="room_fee" name="房费" stackId="a" fill="#10B981" />
-                  <Bar dataKey="deposit" name="押金" stackId="a" fill="#3B82F6" />
-                  <Bar dataKey="incidental" name="杂费" stackId="a" fill="#F59E0B" />
+                  <Bar dataKey="room_fee" name={t('analytics.roomFee')} stackId="a" fill="#10B981" />
+                  <Bar dataKey="deposit" name={t('analytics.deposit')} stackId="a" fill="#3B82F6" />
+                  <Bar dataKey="incidental" name={t('analytics.incidental')} stackId="a" fill="#F59E0B" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 text-sm">暂无数据</div>
+              <div className="h-full flex items-center justify-center text-gray-400 text-sm">{t('common.noData')}</div>
             )}
           </div>
         </Card>
 
         {/* Quarterly Revenue Bar Chart */}
         <Card padding="md">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">季度收益对比</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">{t('analytics.quarterlyRevenue')}</h3>
           <div className="h-64">
             {quarterlyRevenue.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -675,18 +676,18 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="quarter" tick={{ fontSize: 11, fill: '#6b7280' }} />
                   <YAxis
-                    tickFormatter={(v: number) => `¥${v >= 10000 ? (v / 10000).toFixed(0) + '万' : v}`}
+                    tickFormatter={(v: number) => `¥${v >= 10000 ? (v / 10000).toFixed(0) + t('analytics.10kUnit') : v}`}
                     tick={{ fontSize: 11, fill: '#6b7280' }}
                   />
                   <Tooltip
-                    formatter={(value: any) => [`¥${Number(value).toLocaleString('zh-CN')}`]}
+                    formatter={(value: any) => [`¥${Number(value).toLocaleString(locale)}`]}
                     contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
                   />
                   <Bar dataKey="total" fill="#8B5CF6" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 text-sm">暂无数据</div>
+              <div className="h-full flex items-center justify-center text-gray-400 text-sm">{t('common.noData')}</div>
             )}
           </div>
         </Card>
@@ -694,7 +695,7 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
 
       {/* Payment Method Trend Stacked Area Chart */}
       <Card padding="md">
-        <h3 className="text-sm font-semibold text-gray-700 mb-4">支付方式趋势</h3>
+        <h3 className="text-sm font-semibold text-gray-700 mb-4">{t('analytics.paymentMethodTrend')}</h3>
         <div className="h-64">
           {paymentMethodTrend.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
@@ -702,64 +703,64 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#6b7280' }} />
                 <YAxis
-                  tickFormatter={(v: number) => `¥${v >= 10000 ? (v / 10000).toFixed(0) + '万' : v}`}
+                  tickFormatter={(v: number) => `¥${v >= 10000 ? (v / 10000).toFixed(0) + t('analytics.10kUnit') : v}`}
                   tick={{ fontSize: 11, fill: '#6b7280' }}
                 />
                 <Tooltip
-                  formatter={(value: any) => [`¥${Number(value).toLocaleString('zh-CN')}`]}
+                  formatter={(value: any) => [`¥${Number(value).toLocaleString(locale)}`]}
                   contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12 }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Area type="monotone" dataKey="WeChat" name="微信" stackId="1" fill="#07C160" stroke="#07C160" fillOpacity={0.6} />
-                <Area type="monotone" dataKey="Alipay" name="支付宝" stackId="1" fill="#1677FF" stroke="#1677FF" fillOpacity={0.6} />
-                <Area type="monotone" dataKey="Cash" name="现金" stackId="1" fill="#F59E0B" stroke="#F59E0B" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="WeChat" name={t('analytics.wechat')} stackId="1" fill="#07C160" stroke="#07C160" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="Alipay" name={t('analytics.alipay')} stackId="1" fill="#1677FF" stroke="#1677FF" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="Cash" name={t('analytics.cash')} stackId="1" fill="#F59E0B" stroke="#F59E0B" fillOpacity={0.6} />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-full flex items-center justify-center text-gray-400 text-sm">暂无数据</div>
+            <div className="h-full flex items-center justify-center text-gray-400 text-sm">{t('common.noData')}</div>
           )}
         </div>
       </Card>
 
       {/* Yearly Revenue Summary Table */}
       <Card padding="md">
-        <h3 className="text-sm font-semibold text-gray-700 mb-4">年度收益汇总</h3>
+        <h3 className="text-sm font-semibold text-gray-700 mb-4">{t('analytics.yearlyRevenueSummary')}</h3>
         {yearlyRevenue.length > 0 ? (
           <div className="border border-gray-200 rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
-                  <th className="text-left px-4 py-2 font-medium">年份</th>
-                  <th className="text-right px-4 py-2 font-medium">总收益</th>
-                  <th className="text-right px-4 py-2 font-medium">房费</th>
-                  <th className="text-right px-4 py-2 font-medium">押金</th>
-                  <th className="text-right px-4 py-2 font-medium">杂费</th>
+                  <th className="text-left px-4 py-2 font-medium">{t('analytics.year')}</th>
+                  <th className="text-right px-4 py-2 font-medium">{t('analytics.totalRevenue')}</th>
+                  <th className="text-right px-4 py-2 font-medium">{t('analytics.roomFee')}</th>
+                  <th className="text-right px-4 py-2 font-medium">{t('analytics.deposit')}</th>
+                  <th className="text-right px-4 py-2 font-medium">{t('analytics.incidental')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {yearlyRevenue.map((yr) => (
                   <tr key={yr.year} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-2 text-gray-900 font-medium">{yr.year}</td>
-                    <td className="px-4 py-2 text-right text-gray-900">¥{yr.total.toLocaleString('zh-CN')}</td>
-                    <td className="px-4 py-2 text-right text-gray-700">¥{yr.room_fee.toLocaleString('zh-CN')}</td>
-                    <td className="px-4 py-2 text-right text-gray-700">¥{yr.deposit.toLocaleString('zh-CN')}</td>
-                    <td className="px-4 py-2 text-right text-gray-700">¥{yr.incidental.toLocaleString('zh-CN')}</td>
+                    <td className="px-4 py-2 text-right text-gray-900">¥{yr.total.toLocaleString(locale)}</td>
+                    <td className="px-4 py-2 text-right text-gray-700">¥{yr.room_fee.toLocaleString(locale)}</td>
+                    <td className="px-4 py-2 text-right text-gray-700">¥{yr.deposit.toLocaleString(locale)}</td>
+                    <td className="px-4 py-2 text-right text-gray-700">¥{yr.incidental.toLocaleString(locale)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ) : (
-          <div className="h-16 flex items-center justify-center text-gray-400 text-sm">暂无数据</div>
+          <div className="h-16 flex items-center justify-center text-gray-400 text-sm">{t('common.noData')}</div>
         )}
       </Card>
 
       {/* Collapsible Detail Table */}
       <Card padding="md">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-gray-700">📋 详细数据表格</h3>
+          <h3 className="text-sm font-semibold text-gray-700">📋 {t('analytics.detailedDataTable')}</h3>
           <Button variant="ghost" size="sm" onClick={() => setShowTable(!showTable)}>
-            {showTable ? '收起' : '展开'}
+            {showTable ? t('analytics.collapse') : t('analytics.expand')}
           </Button>
         </div>
         {showTable && (
@@ -768,11 +769,11 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-gray-600 sticky top-0">
                   <tr>
-                    <th className="text-left px-3 py-2 font-medium">日期</th>
-                    <th className="text-right px-3 py-2 font-medium">入住率</th>
-                    <th className="text-right px-3 py-2 font-medium">在住</th>
-                    <th className="text-right px-3 py-2 font-medium">空房</th>
-                    <th className="text-right px-3 py-2 font-medium">收益</th>
+                    <th className="text-left px-3 py-2 font-medium">{t('analytics.date')}</th>
+                    <th className="text-right px-3 py-2 font-medium">{t('analytics.occupancyRate')}</th>
+                    <th className="text-right px-3 py-2 font-medium">{t('analytics.inHouse')}</th>
+                    <th className="text-right px-3 py-2 font-medium">{t('analytics.vacant')}</th>
+                    <th className="text-right px-3 py-2 font-medium">{t('analytics.revenue')}</th>
                     <th className="text-right px-3 py-2 font-medium">ADR</th>
                   </tr>
                 </thead>
@@ -789,9 +790,9 @@ export default function AnalyticsPage({ refreshKey }: { refreshKey?: number }) {
                       <tr key={i} className="hover:bg-gray-50 transition-colors">
                         <td className="px-3 py-2 text-gray-900 font-medium">{day.date}</td>
                         <td className="px-3 py-2 text-right text-gray-700">{day.occupancyRate}%</td>
-                        <td className="px-3 py-2 text-right text-gray-700">{day.occupiedRooms}间</td>
-                        <td className="px-3 py-2 text-right text-gray-700">{day.totalRooms - day.occupiedRooms}间</td>
-                        <td className="px-3 py-2 text-right text-gray-900">¥{dayRevenue.toLocaleString('zh-CN')}</td>
+                        <td className="px-3 py-2 text-right text-gray-700">{day.occupiedRooms}{t('analytics.roomsUnit')}</td>
+                        <td className="px-3 py-2 text-right text-gray-700">{day.totalRooms - day.occupiedRooms}{t('analytics.roomsUnit')}</td>
+                        <td className="px-3 py-2 text-right text-gray-900">¥{dayRevenue.toLocaleString(locale)}</td>
                         <td className="px-3 py-2 text-right text-gray-700">¥{dayAdr}</td>
                       </tr>
                     )

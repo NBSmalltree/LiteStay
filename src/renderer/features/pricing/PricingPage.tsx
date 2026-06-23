@@ -1,14 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Card, Button, Dialog, Input, Select } from '../../components'
+import { Card, Button, Dialog, Input, Select, DatePicker } from '../../components'
 import type { PriceRule, PriceCalendar, RoomType } from '../../../shared/types'
-
-const RULE_TYPES = [
-  { value: 'weekday', label: '平日' },
-  { value: 'weekend', label: '周末' },
-  { value: 'holiday', label: '节假日' },
-  { value: 'custom', label: '自定义' },
-]
 
 interface PricingPageProps {
   refreshKey: number
@@ -86,7 +79,7 @@ export default function PricingPage({ refreshKey }: PricingPageProps) {
   }
 
   const handleDeleteRule = async (ruleId: number) => {
-    if (!confirm('确定删除此规则？')) return
+    if (!confirm(t('pricing.confirmDelete'))) return
     await window.electron.db.deletePriceRule(ruleId)
     await loadRules()
   }
@@ -106,7 +99,7 @@ export default function PricingPage({ refreshKey }: PricingPageProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: Rule list */}
         <div className="space-y-4">
-          <h2 className="text-base font-semibold text-gray-900">规则列表</h2>
+          <h2 className="text-base font-semibold text-gray-900">{t('pricing.ruleList')}</h2>
           {rules.length === 0 ? (
             <Card>
               <div className="text-center py-8 text-gray-400 text-sm">
@@ -124,10 +117,10 @@ export default function PricingPage({ refreshKey }: PricingPageProps) {
                         <div>
                           <h3 className="font-medium text-gray-900">{rule.rule_name}</h3>
                           <p className="text-sm text-gray-500">
-                            {rule.rule_type === 'weekday' && '平日'}
-                            {rule.rule_type === 'weekend' && '周末'}
-                            {rule.rule_type === 'holiday' && '节假日'}
-                            {rule.rule_type === 'custom' && '自定义'}
+                            {rule.rule_type === 'weekday' && t('pricing.weekday')}
+                            {rule.rule_type === 'weekend' && t('pricing.weekend')}
+                            {rule.rule_type === 'holiday' && t('pricing.holiday')}
+                            {rule.rule_type === 'custom' && t('pricing.custom')}
                             {rule.start_date && ` (${rule.start_date} ~ ${rule.end_date})`}
                           </p>
                         </div>
@@ -140,15 +133,15 @@ export default function PricingPage({ refreshKey }: PricingPageProps) {
                               {((rule.price_multiplier - 1) * 100).toFixed(0)}%
                             </span>
                           )}
-                          <p className="text-xs text-gray-400">优先级：{rule.priority}</p>
+                          <p className="text-xs text-gray-400">{t('pricing.priority')}：{rule.priority}</p>
                         </div>
                       </div>
                       <div className="mt-3 flex gap-2">
-                        <Button variant="secondary" size="sm" onClick={() => handleEditRule(rule)}>编辑</Button>
+                        <Button variant="secondary" size="sm" onClick={() => handleEditRule(rule)}>{t('common.edit')}</Button>
                         <Button variant="ghost" size="sm" onClick={() => handleToggleRule(rule)}>
-                          {rule.is_active ? '禁用' : '启用'}
+                          {rule.is_active ? t('pricing.inactive') : t('pricing.active')}
                         </Button>
-                        <Button variant="danger" size="sm" onClick={() => handleDeleteRule(rule.rule_id)}>删除</Button>
+                        <Button variant="danger" size="sm" onClick={() => handleDeleteRule(rule.rule_id)}>{t('common.delete')}</Button>
                       </div>
                     </Card>
                   ))}
@@ -161,7 +154,7 @@ export default function PricingPage({ refreshKey }: PricingPageProps) {
         {/* Right: Price calendar */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-gray-900">价格日历</h2>
+            <h2 className="text-base font-semibold text-gray-900">{t('pricing.calendar')}</h2>
             <div className="w-48">
               <Select value={calendarRoomType} onChange={e => setCalendarRoomType(e.target.value)}>
                 {roomTypes.map(t => <option key={t.type_id} value={t.type_name}>{t.type_name}</option>)}
@@ -171,22 +164,22 @@ export default function PricingPage({ refreshKey }: PricingPageProps) {
           <Card>
             {/* Legend */}
             <div className="flex items-center gap-4 mb-4 text-xs text-gray-500">
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-100 inline-block"></span> 原价</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-100 inline-block"></span> 涨价</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-100 inline-block"></span> 降价</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-100 inline-block"></span> {t('pricing.originalPrice')}</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-100 inline-block"></span> {t('pricing.priceUp')}</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-100 inline-block"></span> {t('pricing.priceDown')}</span>
             </div>
 
             {/* Weekday headers */}
             <div className="grid grid-cols-7 gap-1 mb-1">
-              {['日', '一', '二', '三', '四', '五', '六'].map(d => (
+              {[t('weekdays.sun'), t('weekdays.mon'), t('weekdays.tue'), t('weekdays.wed'), t('weekdays.thu'), t('weekdays.fri'), t('weekdays.sat')].map(d => (
                 <div key={d} className="text-center text-xs font-medium text-gray-400 py-1">{d}</div>
               ))}
             </div>
 
             {calendarLoading ? (
-              <div className="text-center py-12 text-gray-400 text-sm">加载中...</div>
+              <div className="text-center py-12 text-gray-400 text-sm">{t('common.loading')}</div>
             ) : calendar.length === 0 ? (
-              <div className="text-center py-12 text-gray-400 text-sm">请选择房型查看价格日历</div>
+              <div className="text-center py-12 text-gray-400 text-sm">{t('pricing.selectRoomTypeToView')}</div>
             ) : (
               <div className="grid grid-cols-7 gap-1">
                 {/* Pad leading empty cells */}
@@ -208,10 +201,10 @@ export default function PricingPage({ refreshKey }: PricingPageProps) {
                     <div
                       key={day.date}
                       className={`p-2 rounded text-center ${bgColor} ${isToday ? 'ring-2 ring-primary-500' : ''}`}
-                      title={day.applied_rule ? `规则: ${day.applied_rule}` : '基础价格'}
+                      title={day.applied_rule ? `${t('pricing.rulePrefix')}${day.applied_rule}` : t('pricing.noRule')}
                     >
                       <div className="text-xs text-gray-500">
-                        {new Date(day.date + 'T00:00:00').getDate()}日
+                        {new Date(day.date + 'T00:00:00').getDate()}{t('pricing.daySuffix')}
                       </div>
                       <div className={`font-medium text-sm ${textColor}`}>¥{day.final_price}</div>
                       {day.applied_rule && (
@@ -251,6 +244,7 @@ function RuleEditDialog({
   onClose: () => void
   onSaved: () => void
 }) {
+  const { t } = useTranslation()
   const [roomType, setRoomType] = useState('')
   const [ruleName, setRuleName] = useState('')
   const [ruleType, setRuleType] = useState<'weekday' | 'weekend' | 'holiday' | 'custom'>('weekday')
@@ -263,6 +257,13 @@ function RuleEditDialog({
   const [isActive, setIsActive] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  const RULE_TYPES = [
+    { value: 'weekday', label: t('pricing.weekday') },
+    { value: 'weekend', label: t('pricing.weekend') },
+    { value: 'holiday', label: t('pricing.holiday') },
+    { value: 'custom', label: t('pricing.custom') },
+  ]
 
   const needDateRange = ruleType === 'holiday' || ruleType === 'custom'
 
@@ -297,17 +298,17 @@ function RuleEditDialog({
 
   const handleSave = async () => {
     setError('')
-    if (!ruleName.trim()) { setError('请输入规则名称'); return }
-    if (!roomType) { setError('请选择房型'); return }
+    if (!ruleName.trim()) { setError(t('pricing.enterRuleName')); return }
+    if (!roomType) { setError(t('pricing.selectRoomType')); return }
     if (needDateRange) {
-      if (!startDate || !endDate) { setError('请填写日期范围'); return }
-      if (endDate < startDate) { setError('结束日期不能早于开始日期'); return }
+      if (!startDate || !endDate) { setError(t('pricing.enterDateRange')); return }
+      if (endDate < startDate) { setError(t('pricing.endDateAfterStart')); return }
     }
     if (useFixedPrice && (!fixedPrice || Number(fixedPrice) <= 0)) {
-      setError('请输入有效的固定价格'); return
+      setError(t('pricing.enterFixedPrice')); return
     }
     if (!useFixedPrice && Number(priceMultiplier) <= 0) {
-      setError('价格倍数必须大于0'); return
+      setError(t('pricing.multiplierMustPositive')); return
     }
 
     setSaving(true)
@@ -331,21 +332,21 @@ function RuleEditDialog({
       }
       onSaved()
     } catch (e: any) {
-      setError(e?.message || '保存失败')
+      setError(e?.message || t('pricing.saveFailed'))
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <Dialog open={open} onClose={onClose} title={rule ? '编辑规则' : '新增规则'} maxWidth="md">
+    <Dialog open={open} onClose={onClose} title={rule ? t('pricing.editRule') : t('pricing.newRule')} maxWidth="md">
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          <Select label="房型" value={roomType} onChange={e => setRoomType(e.target.value)}>
+          <Select label={t('pricing.roomType')} value={roomType} onChange={e => setRoomType(e.target.value)}>
             {roomTypes.map(t => <option key={t.type_id} value={t.type_name}>{t.type_name}</option>)}
           </Select>
           <Select
-            label="规则类型"
+            label={t('pricing.ruleType')}
             value={ruleType}
             onChange={e => setRuleType(e.target.value as any)}
           >
@@ -354,22 +355,28 @@ function RuleEditDialog({
         </div>
 
         <Input
-          label="规则名称"
+          label={t('pricing.ruleName')}
           value={ruleName}
           onChange={e => setRuleName(e.target.value)}
-          placeholder="如：周末上浮、国庆黄金周"
+          placeholder={t('pricing.ruleNamePlaceholder')}
         />
 
         {needDateRange && (
           <div className="grid grid-cols-2 gap-4">
-            <Input label="开始日期" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-            <Input label="结束日期" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700">{t('pricing.startDate')}</label>
+              <DatePicker value={startDate} onChange={setStartDate} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700">{t('pricing.endDate')}</label>
+              <DatePicker value={endDate} onChange={setEndDate} className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors" />
+            </div>
           </div>
         )}
 
         {/* Price adjustment */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">价格调整方式</label>
+          <label className="block text-sm font-medium text-gray-700">{t('pricing.priceAdjustment')}</label>
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -378,7 +385,7 @@ function RuleEditDialog({
                 onChange={() => setUseFixedPrice(false)}
                 className="text-primary-600"
               />
-              倍数调整
+              {t('pricing.multiplier')}
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -387,31 +394,31 @@ function RuleEditDialog({
                 onChange={() => setUseFixedPrice(true)}
                 className="text-primary-600"
               />
-              固定价格
+              {t('pricing.fixedPrice')}
             </label>
           </div>
           {useFixedPrice ? (
             <Input
-              label="固定价格（元）"
+              label={t('pricing.fixedPriceUnit')}
               type="number"
               value={fixedPrice}
               onChange={e => setFixedPrice(e.target.value)}
-              placeholder="如：300"
+              placeholder={t('pricing.fixedPricePlaceholder')}
             />
           ) : (
             <div>
               <Input
-                label="价格倍数"
+                label={t('pricing.multiplier')}
                 type="number"
                 step="0.1"
                 value={priceMultiplier}
                 onChange={e => setPriceMultiplier(e.target.value)}
-                placeholder="1.0 = 原价，1.5 = 涨价50%"
+                placeholder={t('pricing.multiplierHint')}
               />
               <p className="text-xs text-gray-400 mt-1">
-                {Number(priceMultiplier) > 1 && `涨价 ${((Number(priceMultiplier) - 1) * 100).toFixed(0)}%`}
-                {Number(priceMultiplier) < 1 && Number(priceMultiplier) > 0 && `降价 ${((1 - Number(priceMultiplier)) * 100).toFixed(0)}%`}
-                {Number(priceMultiplier) === 1 && '原价'}
+                {Number(priceMultiplier) > 1 && `${t('pricing.priceIncrease')} ${((Number(priceMultiplier) - 1) * 100).toFixed(0)}%`}
+                {Number(priceMultiplier) < 1 && Number(priceMultiplier) > 0 && `${t('pricing.priceDecrease')} ${((1 - Number(priceMultiplier)) * 100).toFixed(0)}%`}
+                {Number(priceMultiplier) === 1 && t('pricing.basePrice')}
               </p>
             </div>
           )}
@@ -419,14 +426,14 @@ function RuleEditDialog({
 
         <div className="grid grid-cols-2 gap-4">
           <Input
-            label="优先级"
+            label={t('pricing.priority')}
             type="number"
             value={priority}
             onChange={e => setPriority(e.target.value)}
-            placeholder="数字越大优先级越高"
+            placeholder={t('pricing.priorityHint')}
           />
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-700">状态</label>
+            <label className="block text-sm font-medium text-gray-700">{t('pricing.status')}</label>
             <label className="flex items-center gap-2 mt-2 text-sm">
               <input
                 type="checkbox"
@@ -434,7 +441,7 @@ function RuleEditDialog({
                 onChange={e => setIsActive(e.target.checked)}
                 className="rounded text-primary-600"
               />
-              启用
+              {t('pricing.active')}
             </label>
           </div>
         </div>
@@ -442,8 +449,8 @@ function RuleEditDialog({
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         <div className="flex justify-end gap-3 pt-2">
-          <Button variant="secondary" onClick={onClose}>取消</Button>
-          <Button onClick={handleSave} disabled={saving}>{saving ? '保存中...' : '保存'}</Button>
+          <Button variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button onClick={handleSave} disabled={saving}>{saving ? t('pricing.saving') : t('common.save')}</Button>
         </div>
       </div>
     </Dialog>

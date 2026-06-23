@@ -7,19 +7,9 @@ interface Props {
   refreshKey: number
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: '待开票',
-  issued: '已开票',
-  cancelled: '已取消',
-}
-
-const TYPE_LABELS: Record<string, string> = {
-  normal: '普通发票',
-  special: '专用发票',
-}
-
 export default function InvoicesPage({ refreshKey }: Props) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const currencyLocale = i18n.language === 'en' ? 'en-US' : 'zh-CN'
   const [invoices, setInvoices] = useState<InvoiceWithOrder[]>([])
   const [orders, setOrders] = useState<Order[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
@@ -136,8 +126,8 @@ export default function InvoicesPage({ refreshKey }: Props) {
 
   const handleSave = async () => {
     setError('')
-    if (!form.title.trim()) { setError('请输入发票抬头'); return }
-    if (!form.order_id) { setError('请选择关联订单'); return }
+    if (!form.title.trim()) { setError(t('invoices.titleRequired')); return }
+    if (!form.order_id) { setError(t('invoices.orderRequired')); return }
     setSaving(true)
     try {
       if (editInvoice) {
@@ -169,7 +159,7 @@ export default function InvoicesPage({ refreshKey }: Props) {
       resetForm()
       loadInvoices()
     } catch (e: any) {
-      setError(e?.message || '保存失败')
+      setError(e?.message || t('invoices.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -180,7 +170,7 @@ export default function InvoicesPage({ refreshKey }: Props) {
       await (window.electron.db.markInvoiceIssued(invoiceId) as any)
       loadInvoices()
     } catch (e: any) {
-      alert(e?.message || '操作失败')
+      alert(e?.message || t('invoices.operationFailed'))
     }
   }
 
@@ -189,7 +179,7 @@ export default function InvoicesPage({ refreshKey }: Props) {
       await (window.electron.db.updateInvoice(invoiceId, { status: 'cancelled' }) as any)
       loadInvoices()
     } catch (e: any) {
-      alert(e?.message || '操作失败')
+      alert(e?.message || t('invoices.operationFailed'))
     }
   }
 
@@ -203,7 +193,7 @@ export default function InvoicesPage({ refreshKey }: Props) {
       setConfirmDeleteId(null)
       loadInvoices()
     } catch (e: any) {
-      alert(e?.message || '删除失败')
+      alert(e?.message || t('invoices.deleteFailed'))
     }
   }
 
@@ -211,10 +201,10 @@ export default function InvoicesPage({ refreshKey }: Props) {
     try {
       const result = await (window.electron.db.exportInvoiceList(statusFilter) as any)
       if (result) {
-        alert(`导出成功: ${result}`)
+        alert(`${t('invoices.exportSuccess')}: ${result}`)
       }
     } catch (e: any) {
-      alert(e?.message || '导出失败')
+      alert(e?.message || t('invoices.exportFailed'))
     }
   }
 
@@ -238,20 +228,20 @@ export default function InvoicesPage({ refreshKey }: Props) {
       <div className="grid grid-cols-3 gap-4">
         <Card>
           <div className="text-center">
-            <div className="text-sm text-gray-500 mb-1">待开票</div>
+            <div className="text-sm text-gray-500 mb-1">{t('invoices.pending')}</div>
             <div className="text-3xl font-bold text-amber-600">{pendingCount}</div>
           </div>
         </Card>
         <Card>
           <div className="text-center">
-            <div className="text-sm text-gray-500 mb-1">本月已开票</div>
+            <div className="text-sm text-gray-500 mb-1">{t('invoices.issuedThisMonth')}</div>
             <div className="text-3xl font-bold text-green-600">{issuedThisMonth}</div>
           </div>
         </Card>
         <Card>
           <div className="text-center">
-            <div className="text-sm text-gray-500 mb-1">发票总金额</div>
-            <div className="text-3xl font-bold text-blue-600">{totalAmount.toLocaleString('zh-CN', { style: 'currency', currency: 'CNY' })}</div>
+            <div className="text-sm text-gray-500 mb-1">{t('invoices.totalAmount')}</div>
+            <div className="text-3xl font-bold text-blue-600">{totalAmount.toLocaleString(currencyLocale, { style: 'currency', currency: 'CNY' })}</div>
           </div>
         </Card>
       </div>
@@ -261,10 +251,10 @@ export default function InvoicesPage({ refreshKey }: Props) {
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-2">
             {[
-              { value: 'all', label: '全部' },
-              { value: 'pending', label: '待开票' },
-              { value: 'issued', label: '已开票' },
-              { value: 'cancelled', label: '已取消' },
+              { value: 'all', label: t('invoices.status.all') },
+              { value: 'pending', label: t('invoices.status.pending') },
+              { value: 'issued', label: t('invoices.status.issued') },
+              { value: 'cancelled', label: t('invoices.status.cancelled') },
             ].map(opt => (
               <button
                 key={opt.value}
@@ -283,7 +273,7 @@ export default function InvoicesPage({ refreshKey }: Props) {
             <svg className="w-4 h-4 mr-1.5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
             </svg>
-            导出 Excel
+            {t('invoices.exportExcel')}
           </Button>
         </div>
 
@@ -293,13 +283,13 @@ export default function InvoicesPage({ refreshKey }: Props) {
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-2.5 text-left font-medium text-gray-600">发票编号</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-gray-600">状态</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-gray-600">抬头</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-gray-600">客人</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-gray-600">房号</th>
-                  <th className="px-4 py-2.5 text-right font-medium text-gray-600">金额</th>
-                  <th className="px-4 py-2.5 text-center font-medium text-gray-600">操作</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-gray-600">{t('invoices.invoiceNumber')}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-gray-600">{t('invoices.statusColumn')}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-gray-600">{t('invoices.titleColumn')}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-gray-600">{t('invoices.guest')}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-gray-600">{t('invoices.roomNumber')}</th>
+                  <th className="px-4 py-2.5 text-right font-medium text-gray-600">{t('invoices.amount')}</th>
+                  <th className="px-4 py-2.5 text-center font-medium text-gray-600">{t('invoices.operations')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -312,20 +302,20 @@ export default function InvoicesPage({ refreshKey }: Props) {
                         inv.status === 'pending' ? 'bg-amber-100 text-amber-700' :
                         'bg-gray-100 text-gray-600'
                       }`}>
-                        {STATUS_LABELS[inv.status]}
+                        {t(`invoices.status.${inv.status}`)}
                       </span>
                     </td>
                     <td className="px-4 py-2.5 text-gray-900 max-w-[200px] truncate">{inv.title}</td>
                     <td className="px-4 py-2.5 text-gray-600">{inv.guest_name}</td>
                     <td className="px-4 py-2.5 text-gray-600">{inv.room_number}</td>
-                    <td className="px-4 py-2.5 text-right font-medium text-gray-900">{inv.actual_amount.toLocaleString('zh-CN', { style: 'currency', currency: 'CNY' })}</td>
+                    <td className="px-4 py-2.5 text-right font-medium text-gray-900">{inv.actual_amount.toLocaleString(currencyLocale, { style: 'currency', currency: 'CNY' })}</td>
                     <td className="px-4 py-2.5">
                       <div className="flex gap-1 justify-center">
                         <button
                           onClick={() => setShowDetail(inv)}
                           className="px-2 py-1 text-xs text-primary-600 hover:bg-primary-50 rounded transition-colors"
                         >
-                          查看
+                          {t('invoices.view')}
                         </button>
                         {inv.status === 'pending' && (
                           <>
@@ -333,19 +323,19 @@ export default function InvoicesPage({ refreshKey }: Props) {
                               onClick={() => handleEdit(inv)}
                               className="px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded transition-colors"
                             >
-                              编辑
+                              {t('invoices.edit')}
                             </button>
                             <button
                               onClick={() => handleMarkIssued(inv.invoice_id)}
                               className="px-2 py-1 text-xs text-green-600 hover:bg-green-50 rounded transition-colors"
                             >
-                              标记已开票
+                              {t('invoices.markIssued')}
                             </button>
                             <button
                               onClick={() => handleCancel(inv.invoice_id)}
                               className="px-2 py-1 text-xs text-amber-600 hover:bg-amber-50 rounded transition-colors"
                             >
-                              取消
+                              {t('invoices.cancel')}
                             </button>
                           </>
                         )}
@@ -354,7 +344,7 @@ export default function InvoicesPage({ refreshKey }: Props) {
                             onClick={() => handleEdit(inv)}
                             className="px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded transition-colors"
                           >
-                            编辑
+                            {t('invoices.edit')}
                           </button>
                         )}
                         <button
@@ -365,7 +355,7 @@ export default function InvoicesPage({ refreshKey }: Props) {
                               : 'text-red-400 hover:bg-red-50 hover:text-red-600'
                           }`}
                         >
-                          {confirmDeleteId === inv.invoice_id ? '确认删除？' : '删除'}
+                          {confirmDeleteId === inv.invoice_id ? t('invoices.confirmDelete') : t('invoices.delete')}
                         </button>
                       </div>
                     </td>
@@ -382,16 +372,16 @@ export default function InvoicesPage({ refreshKey }: Props) {
       </Card>
 
       {/* Edit / New Invoice Dialog */}
-      <Dialog open={showEdit} onClose={() => { setShowEdit(false); resetForm() }} title={editInvoice ? '编辑发票' : '新增发票'} maxWidth="md">
+      <Dialog open={showEdit} onClose={() => { setShowEdit(false); resetForm() }} title={editInvoice ? t('invoices.editInvoice') : t('invoices.newInvoice')} maxWidth="md">
         <div className="space-y-4">
           {/* Order selection */}
           {!editInvoice && (
             <Select
-              label="关联订单 *"
+              label={`${t('invoices.linkedOrder')} *`}
               value={form.order_id}
               onChange={e => setForm({ ...form, order_id: Number(e.target.value) })}
             >
-              <option value="">请选择订单</option>
+              <option value="">{t('invoices.selectOrder')}</option>
               {orders.map(o => (
                 <option key={o.order_id} value={o.order_id}>{getOrderLabel(o)}</option>
               ))}
@@ -400,34 +390,34 @@ export default function InvoicesPage({ refreshKey }: Props) {
 
           {/* Basic info */}
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">基本信息</h4>
+            <h4 className="text-sm font-medium text-gray-700 mb-2">{t('invoices.basicInfo')}</h4>
             <div className="grid grid-cols-2 gap-4">
               <Input
-                label="发票抬头 *"
+                label={`${t('invoices.titleField')} *`}
                 value={form.title}
                 onChange={e => setForm({ ...form, title: e.target.value })}
-                placeholder="公司名称或个人姓名"
+                placeholder={t('invoices.titlePlaceholder')}
               />
               <Input
-                label="税号"
+                label={t('invoices.taxNumber')}
                 value={form.tax_number}
                 onChange={e => setForm({ ...form, tax_number: e.target.value })}
-                placeholder="纳税人识别号"
+                placeholder={t('invoices.taxNumberPlaceholder')}
               />
             </div>
           </div>
 
           {/* Contact info */}
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">联系信息</h4>
+            <h4 className="text-sm font-medium text-gray-700 mb-2">{t('invoices.contactInfo')}</h4>
             <div className="grid grid-cols-2 gap-4">
               <Input
-                label="公司地址"
+                label={t('invoices.companyAddress')}
                 value={form.company_address}
                 onChange={e => setForm({ ...form, company_address: e.target.value })}
               />
               <Input
-                label="电话"
+                label={t('invoices.phone')}
                 value={form.phone}
                 onChange={e => setForm({ ...form, phone: e.target.value })}
               />
@@ -436,15 +426,15 @@ export default function InvoicesPage({ refreshKey }: Props) {
 
           {/* Bank info */}
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">银行信息（专票必填）</h4>
+            <h4 className="text-sm font-medium text-gray-700 mb-2">{t('invoices.bankInfo')}</h4>
             <div className="grid grid-cols-2 gap-4">
               <Input
-                label="开户行"
+                label={t('invoices.bankName')}
                 value={form.bank_name}
                 onChange={e => setForm({ ...form, bank_name: e.target.value })}
               />
               <Input
-                label="银行账号"
+                label={t('invoices.bankAccount')}
                 value={form.bank_account}
                 onChange={e => setForm({ ...form, bank_account: e.target.value })}
               />
@@ -453,17 +443,17 @@ export default function InvoicesPage({ refreshKey }: Props) {
 
           {/* Invoice type */}
           <Select
-            label="发票类型"
+            label={t('invoices.invoiceType')}
             value={form.invoice_type}
             onChange={e => setForm({ ...form, invoice_type: e.target.value as 'normal' | 'special' })}
           >
-            <option value="normal">普通发票</option>
-            <option value="special">专用发票</option>
+            <option value="normal">{t('invoices.normalInvoice')}</option>
+            <option value="special">{t('invoices.specialInvoice')}</option>
           </Select>
 
           {/* Notes */}
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-700">备注</label>
+            <label className="block text-sm font-medium text-gray-700">{t('invoices.notes')}</label>
             <textarea
               className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900
                 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500
@@ -471,23 +461,23 @@ export default function InvoicesPage({ refreshKey }: Props) {
               rows={3}
               value={form.notes}
               onChange={e => setForm({ ...form, notes: e.target.value })}
-              placeholder="发票备注信息..."
+              placeholder={t('invoices.notesPlaceholder')}
             />
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
-            <Button variant="secondary" onClick={() => { setShowEdit(false); resetForm() }}>取消</Button>
+            <Button variant="secondary" onClick={() => { setShowEdit(false); resetForm() }}>{t('invoices.cancel')}</Button>
             <Button onClick={handleSave} disabled={saving || !form.title.trim()}>
-              {saving ? '保存中...' : '保存'}
+              {saving ? t('invoices.saving') : t('invoices.save')}
             </Button>
           </div>
         </div>
       </Dialog>
 
       {/* Invoice Detail Dialog */}
-      <Dialog open={!!showDetail} onClose={() => setShowDetail(null)} title="发票详情" maxWidth="md">
+      <Dialog open={!!showDetail} onClose={() => setShowDetail(null)} title={t('invoices.invoiceDetail')} maxWidth="md">
         {showDetail && (
           <div className="space-y-4">
             <div className="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-lg">
@@ -497,52 +487,52 @@ export default function InvoicesPage({ refreshKey }: Props) {
                 showDetail.status === 'pending' ? 'bg-amber-100 text-amber-700' :
                 'bg-gray-100 text-gray-600'
               }`}>
-                {STATUS_LABELS[showDetail.status]}
+                {t(`invoices.status.${showDetail.status}`)}
               </span>
               <span className="text-xs text-gray-500 ml-auto">
-                {TYPE_LABELS[showDetail.invoice_type]}
+                {showDetail.invoice_type === 'normal' ? t('invoices.normalInvoice') : t('invoices.specialInvoice')}
               </span>
             </div>
 
             {/* Order info */}
             <div className="bg-blue-50 rounded-lg p-4 space-y-2">
-              <h4 className="text-sm font-medium text-blue-800 mb-2">关联订单</h4>
+              <h4 className="text-sm font-medium text-blue-800 mb-2">{t('invoices.linkedOrder')}</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <div><span className="text-gray-500">客人：</span>{showDetail.guest_name}</div>
-                <div><span className="text-gray-500">房号：</span>{showDetail.room_number}</div>
-                <div><span className="text-gray-500">入住：</span>{showDetail.check_in_date}</div>
-                <div><span className="text-gray-500">退房：</span>{showDetail.check_out_date}</div>
-                <div><span className="text-gray-500">金额：</span>{showDetail.actual_amount.toLocaleString('zh-CN', { style: 'currency', currency: 'CNY' })}</div>
+                <div><span className="text-gray-500">{t('invoices.guest')}：</span>{showDetail.guest_name}</div>
+                <div><span className="text-gray-500">{t('invoices.roomNumber')}：</span>{showDetail.room_number}</div>
+                <div><span className="text-gray-500">{t('invoices.checkIn')}：</span>{showDetail.check_in_date}</div>
+                <div><span className="text-gray-500">{t('invoices.checkOut')}：</span>{showDetail.check_out_date}</div>
+                <div><span className="text-gray-500">{t('invoices.amount')}：</span>{showDetail.actual_amount.toLocaleString(currencyLocale, { style: 'currency', currency: 'CNY' })}</div>
               </div>
             </div>
 
             {/* Invoice info */}
             <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-              <h4 className="text-sm font-medium text-gray-800 mb-2">发票信息</h4>
+              <h4 className="text-sm font-medium text-gray-800 mb-2">{t('invoices.invoiceInfo')}</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <div><span className="text-gray-500">抬头：</span>{showDetail.title}</div>
-                {showDetail.tax_number && <div><span className="text-gray-500">税号：</span>{showDetail.tax_number}</div>}
-                {showDetail.company_address && <div><span className="text-gray-500">地址：</span>{showDetail.company_address}</div>}
-                {showDetail.phone && <div><span className="text-gray-500">电话：</span>{showDetail.phone}</div>}
-                {showDetail.bank_name && <div><span className="text-gray-500">开户行：</span>{showDetail.bank_name}</div>}
-                {showDetail.bank_account && <div><span className="text-gray-500">账号：</span>{showDetail.bank_account}</div>}
+                <div><span className="text-gray-500">{t('invoices.titleColumn')}：</span>{showDetail.title}</div>
+                {showDetail.tax_number && <div><span className="text-gray-500">{t('invoices.taxNumber')}：</span>{showDetail.tax_number}</div>}
+                {showDetail.company_address && <div><span className="text-gray-500">{t('invoices.address')}：</span>{showDetail.company_address}</div>}
+                {showDetail.phone && <div><span className="text-gray-500">{t('invoices.phone')}：</span>{showDetail.phone}</div>}
+                {showDetail.bank_name && <div><span className="text-gray-500">{t('invoices.bankName')}：</span>{showDetail.bank_name}</div>}
+                {showDetail.bank_account && <div><span className="text-gray-500">{t('invoices.account')}：</span>{showDetail.bank_account}</div>}
               </div>
             </div>
 
             {showDetail.notes && (
               <div className="text-sm">
-                <span className="text-gray-500">备注：</span>{showDetail.notes}
+                <span className="text-gray-500">{t('invoices.notes')}：</span>{showDetail.notes}
               </div>
             )}
 
             {showDetail.issued_at && (
               <div className="text-sm">
-                <span className="text-gray-500">开票时间：</span>{showDetail.issued_at}
+                <span className="text-gray-500">{t('invoices.issuedAt')}：</span>{showDetail.issued_at}
               </div>
             )}
 
             <div className="flex justify-end pt-4 border-t border-gray-100">
-              <Button variant="secondary" onClick={() => setShowDetail(null)}>关闭</Button>
+              <Button variant="secondary" onClick={() => setShowDetail(null)}>{t('invoices.close')}</Button>
             </div>
           </div>
         )}

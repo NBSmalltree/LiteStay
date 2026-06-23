@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
-import { Card, Input, Select, Dialog } from '../../components'
+import { Card, Input, Select, Dialog, DatePicker } from '../../components'
 import type { FinancialSummary, FinancialLogDetailed, Order, Room, NightAuditData, RevenueByRoomType, OccupancyStats } from '../../../shared/types'
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -211,10 +211,10 @@ export default function FinancePage({ refreshKey }: { refreshKey: number }) {
         ))}
         {range === 'custom' && (
           <div className="flex items-center gap-2 ml-2">
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+            <DatePicker value={dateFrom} onChange={setDateFrom}
               className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none" />
             <span className="text-gray-400 text-sm">{t('finance.to')}</span>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+            <DatePicker value={dateTo} onChange={setDateTo}
               className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none" />
           </div>
         )}
