@@ -1,9 +1,11 @@
 // LiteStay - Analytics IPC Handlers
 
+const { CH } = require("./utils.cjs");
+
 function registerHandlers(ipcMain, getDb, getMainWindow) {
 
   // Analytics: daily occupancy for date range
-  ipcMain.handle('db:getDailyOccupancy', (_event, dateFrom, dateTo) => {
+  ipcMain.handle('CH.getDailyOccupancy', (_event, dateFrom, dateTo) => {
     const db = getDb();
     const totalRooms = db.prepare('SELECT COUNT(*) as c FROM rooms').get().c;
     const orders = db.prepare(`SELECT check_in_date, check_out_date, room_id FROM orders WHERE status = 'IN_HOUSE'`).all();
@@ -19,7 +21,7 @@ function registerHandlers(ipcMain, getDb, getMainWindow) {
   });
 
   // Analytics: daily revenue by room type
-  ipcMain.handle('db:getDailyRevenueByType', (_event, dateFrom, dateTo) => {
+  ipcMain.handle('CH.getDailyRevenueByType', (_event, dateFrom, dateTo) => {
     return getDb().prepare(`SELECT DATE(fl.created_at) as date, r.room_type, SUM(fl.amount) as total
 FROM financial_logs fl JOIN orders o ON fl.order_id = o.order_id JOIN rooms r ON o.room_id = r.room_id
 WHERE fl.type = 'ROOM_FEE' AND DATE(fl.created_at) BETWEEN ? AND ?
@@ -27,14 +29,14 @@ GROUP BY DATE(fl.created_at), r.room_type ORDER BY date, room_type`).all(dateFro
   });
 
   // Analytics: room type analysis
-  ipcMain.handle('db:getRoomTypeAnalysis', (_event, dateFrom, dateTo) => {
+  ipcMain.handle('CH.getRoomTypeAnalysis', (_event, dateFrom, dateTo) => {
     return getDb().prepare(`SELECT r.room_type, SUM(fl.amount) as revenue, COUNT(DISTINCT o.order_id) as order_count, AVG(fl.amount) as avg_price
 FROM financial_logs fl JOIN orders o ON fl.order_id = o.order_id JOIN rooms r ON o.room_id = r.room_id
 WHERE fl.type = 'ROOM_FEE' AND DATE(fl.created_at) BETWEEN ? AND ? GROUP BY r.room_type ORDER BY revenue DESC`).all(dateFrom, dateTo);
   });
 
   // Analytics: ADR and RevPAR metrics
-  ipcMain.handle('db:getADRRevPAR', (_event, dateFrom, dateTo) => {
+  ipcMain.handle('CH.getADRRevPAR', (_event, dateFrom, dateTo) => {
     const db = getDb();
     const totalRooms = db.prepare('SELECT COUNT(*) as c FROM rooms').get().c;
     const soldRoomNights = db.prepare(`SELECT SUM(CASE
@@ -59,7 +61,7 @@ FROM orders WHERE status != 'CANCELLED' AND check_in_date < ? AND check_out_date
   });
 
   // Analytics: ADR/RevPAR trend (past N days)
-  ipcMain.handle('db:getADRRevPARTrend', (_event, days) => {
+  ipcMain.handle('CH.getADRRevPARTrend', (_event, days) => {
     const db = getDb();
     const totalRooms = db.prepare('SELECT COUNT(*) as c FROM rooms').get().c;
     const result = [];
@@ -84,7 +86,7 @@ FROM orders WHERE status != 'CANCELLED' AND check_in_date < ? AND check_out_date
   });
 
   // Analytics: ADR breakdown by room type
-  ipcMain.handle('db:getADRByRoomType', (_event, dateFrom, dateTo) => {
+  ipcMain.handle('CH.getADRByRoomType', (_event, dateFrom, dateTo) => {
     const nightCase = `CASE WHEN o.check_in_date < ? AND o.check_out_date > ? THEN julianday(?, 'start of day') - julianday(?, 'start of day')
 WHEN o.check_in_date >= ? AND o.check_out_date > ? THEN julianday(?, 'start of day') - julianday(o.check_in_date, 'start of day')
 ELSE julianday(o.check_out_date, 'start of day') - julianday(o.check_in_date, 'start of day') END`;
@@ -100,7 +102,7 @@ GROUP BY r.room_type ORDER BY avg_adr DESC`)
   const typeSum = (type, alias) => `SUM(CASE WHEN fl.type = '${type}' THEN fl.amount ELSE 0 END) as ${alias}`;
 
   // Revenue Analytics: monthly revenue breakdown
-  ipcMain.handle('db:getMonthlyRevenue', (_event, year) => {
+  ipcMain.handle('CH.getMonthlyRevenue', (_event, year) => {
     return getDb().prepare(`SELECT strftime('%Y-%m', fl.created_at) as month, SUM(fl.amount) as total,
 ${typeSum('ROOM_FEE', 'room_fee')}, ${typeSum('DEPOSIT', 'deposit')}, ${typeSum('INCIDENTAL', 'incidental')}
 FROM financial_logs fl WHERE strftime('%Y', fl.created_at) = ?
@@ -108,7 +110,7 @@ GROUP BY strftime('%Y-%m', fl.created_at) ORDER BY month`).all(year.toString());
   });
 
   // Revenue Analytics: quarterly revenue breakdown
-  ipcMain.handle('db:getQuarterlyRevenue', (_event, year) => {
+  ipcMain.handle('CH.getQuarterlyRevenue', (_event, year) => {
     return getDb().prepare(`SELECT CASE WHEN CAST(strftime('%m', fl.created_at) AS INTEGER) BETWEEN 1 AND 3 THEN 'Q1'
 WHEN CAST(strftime('%m', fl.created_at) AS INTEGER) BETWEEN 4 AND 6 THEN 'Q2'
 WHEN CAST(strftime('%m', fl.created_at) AS INTEGER) BETWEEN 7 AND 9 THEN 'Q3' ELSE 'Q4' END as quarter,
@@ -117,14 +119,14 @@ FROM financial_logs fl WHERE strftime('%Y', fl.created_at) = ? GROUP BY quarter 
   });
 
   // Revenue Analytics: yearly revenue summary
-  ipcMain.handle('db:getYearlyRevenue', () => {
+  ipcMain.handle('CH.getYearlyRevenue', () => {
     return getDb().prepare(`SELECT strftime('%Y', fl.created_at) as year, SUM(fl.amount) as total,
 ${typeSum('ROOM_FEE', 'room_fee')}, ${typeSum('DEPOSIT', 'deposit')}, ${typeSum('INCIDENTAL', 'incidental')}
 FROM financial_logs fl GROUP BY strftime('%Y', fl.created_at) ORDER BY year DESC LIMIT 5`).all();
   });
 
   // Revenue Analytics: month-over-month growth
-  ipcMain.handle('db:getRevenueGrowth', () => {
+  ipcMain.handle('CH.getRevenueGrowth', () => {
     const now = new Date();
     const currentMonth = now.toISOString().slice(0, 7);
     const lastMonth = new Date(now.setMonth(now.getMonth() - 1)).toISOString().slice(0, 7);
@@ -136,21 +138,21 @@ FROM financial_logs fl GROUP BY strftime('%Y', fl.created_at) ORDER BY year DESC
   });
 
   // Revenue Analytics: payment method trend by month
-  ipcMain.handle('db:getPaymentMethodTrend', (_event, months) => {
+  ipcMain.handle('CH.getPaymentMethodTrend', (_event, months) => {
     return getDb().prepare(`SELECT strftime('%Y-%m', fl.created_at) as month, fl.payment_method, SUM(fl.amount) as total
 FROM financial_logs fl WHERE fl.created_at >= date('now', '-' || ? || ' months')
 GROUP BY month, fl.payment_method ORDER BY month, fl.payment_method`).all(months);
   });
 
   // Source Analytics: get source stats for date range
-  ipcMain.handle('db:getSourceStats', (_event, dateFrom, dateTo) => {
+  ipcMain.handle('CH.getSourceStats', (_event, dateFrom, dateTo) => {
     return getDb().prepare(`SELECT COALESCE(source, 'direct') as source, COUNT(*) as order_count,
 SUM(actual_amount) as total_revenue, AVG(actual_amount) as avg_revenue
 FROM orders WHERE check_in_date BETWEEN ? AND ? GROUP BY source ORDER BY order_count DESC`).all(dateFrom, dateTo);
   });
 
   // Source Analytics: get source trend by month
-  ipcMain.handle('db:getSourceTrend', (_event, months) => {
+  ipcMain.handle('CH.getSourceTrend', (_event, months) => {
     return getDb().prepare(`SELECT strftime('%Y-%m', check_in_date) as month, COALESCE(source, 'direct') as source,
 COUNT(*) as order_count, SUM(actual_amount) as total_revenue
 FROM orders WHERE check_in_date >= date('now', '-' || ? || ' months')
@@ -158,7 +160,7 @@ GROUP BY month, source ORDER BY month, source`).all(months);
   });
 
   // Source Analytics: update order source
-  ipcMain.handle('db:updateOrderSource', (_event, orderId, source) => {
+  ipcMain.handle('CH.updateOrderSource', (_event, orderId, source) => {
     getDb().prepare('UPDATE orders SET source = ? WHERE order_id = ?').run(source, orderId);
     return true;
   });

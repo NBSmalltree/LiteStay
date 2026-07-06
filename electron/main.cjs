@@ -4,12 +4,13 @@ const path = require('path');
 const { getDb } = require('./database.cjs');
 const { ensureEditionFile, checkTrialCore } = require('./edition.cjs');
 const { registerIpcHandlers } = require('./ipc-handlers.cjs');
+const { CH } = require('./db-handlers/utils.cjs');
 
 let mainWindow = null;
 
-ipcMain.on('win:minimize', () => mainWindow?.minimize());
-ipcMain.on('win:maximize', () => (mainWindow?.isMaximized() ? mainWindow.unmaximize() : mainWindow?.maximize()));
-ipcMain.on('win:close', () => { mainWindow?.close(); app.quit(); });
+ipcMain.on('CH.winMinimize', () => mainWindow?.minimize());
+ipcMain.on('CH.winMaximize', () => (mainWindow?.isMaximized() ? mainWindow.unmaximize() : mainWindow?.maximize()));
+ipcMain.on('CH.winClose', () => { mainWindow?.close(); app.quit(); });
 
 getDb();
 registerIpcHandlers(ipcMain, getDb, () => mainWindow);
@@ -27,8 +28,8 @@ function createWindow() {
     },
   });
 
-  mainWindow.on('maximize', () => mainWindow.webContents.send('win:maximized', true));
-  mainWindow.on('unmaximize', () => mainWindow.webContents.send('win:maximized', false));
+  mainWindow.on('maximize', () => mainWindow.webContents.send('CH.winMaximized', true));
+  mainWindow.on('unmaximize', () => mainWindow.webContents.send('CH.winMaximized', false));
 
   const url = process.env.VITE_DEV_SERVER_URL;
   mainWindow.loadURL(url || `file://${path.join(__dirname, '../dist/index.html')}`);

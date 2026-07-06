@@ -14,9 +14,11 @@ const backupMeta = (filename, filePath) => {
   return { filename, path: filePath, size: stats.size, created_at: stats.birthtime.toISOString() };
 };
 
+const { CH } = require("./utils.cjs");
+
 function registerHandlers(ipcMain, getDb) {
 
-  ipcMain.handle('db:getBackups', () => {
+  ipcMain.handle('CH.getBackups', () => {
     const dir = backupDir();
     if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); return []; }
     return fs.readdirSync(dir)
@@ -25,7 +27,7 @@ function registerHandlers(ipcMain, getDb) {
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   });
 
-  ipcMain.handle('db:createBackup', async (_event, customName) => {
+  ipcMain.handle('CH.createBackup', async (_event, customName) => {
     ensureDir(backupDir());
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const filename = customName ? `${customName}_${timestamp}.sqlite` : `backup_${timestamp}.sqlite`;
@@ -35,7 +37,7 @@ function registerHandlers(ipcMain, getDb) {
     return backupMeta(filename, dest);
   });
 
-  ipcMain.handle('db:restoreBackup', async (_event, backupFilename) => {
+  ipcMain.handle('CH.restoreBackup', async (_event, backupFilename) => {
     const src = backupPath(backupFilename);
     if (!fs.existsSync(src)) throw new Error('备份文件不存在');
     if (fs.statSync(src).size === 0) throw new Error('备份文件损坏');
@@ -61,13 +63,13 @@ function registerHandlers(ipcMain, getDb) {
     }
   });
 
-  ipcMain.handle('db:deleteBackup', (_event, backupFilename) => {
+  ipcMain.handle('CH.deleteBackup', (_event, backupFilename) => {
     const file = backupPath(backupFilename);
     if (fs.existsSync(file)) fs.unlinkSync(file);
     return true;
   });
 
-  ipcMain.handle('db:exportBackup', async (_event, backupFilename) => {
+  ipcMain.handle('CH.exportBackup', async (_event, backupFilename) => {
     const { filePath } = await dialog.showSaveDialog({
       defaultPath: backupFilename,
       filters: [{ name: 'SQLite Database', extensions: ['sqlite'] }],
@@ -76,7 +78,7 @@ function registerHandlers(ipcMain, getDb) {
     return null;
   });
 
-  ipcMain.handle('db:importBackup', async () => {
+  ipcMain.handle('CH.importBackup', async () => {
     const { filePaths } = await dialog.showOpenDialog({
       filters: [{ name: 'SQLite Database', extensions: ['sqlite'] }],
       properties: ['openFile'],

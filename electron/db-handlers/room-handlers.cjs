@@ -1,36 +1,36 @@
 // LiteStay - Room IPC Handlers
 
-const { buildUpdateQuery } = require('./utils.cjs');
+const { CH, buildUpdateQuery } = require('./utils.cjs');
 
 function registerHandlers(ipcMain, getDb) {
 
   // Room Types
-  ipcMain.handle('db:getRoomTypes', () => {
+  ipcMain.handle('CH.getRoomTypes', () => {
     return getDb().prepare('SELECT * FROM room_types ORDER BY sort_order, type_id').all();
   });
 
-  ipcMain.handle('db:insertRoomType', (_event, name) => {
+  ipcMain.handle('CH.insertRoomType', (_event, name) => {
     const maxOrder = getDb().prepare('SELECT MAX(sort_order) as m FROM room_types').get();
     const result = getDb().prepare('INSERT INTO room_types (type_name, sort_order) VALUES (?, ?)').run(name, (maxOrder?.m ?? 0) + 1);
     return getDb().prepare('SELECT * FROM room_types WHERE type_id = ?').get(result.lastInsertRowid);
   });
 
-  ipcMain.handle('db:deleteRoomType', (_event, typeId) => {
+  ipcMain.handle('CH.deleteRoomType', (_event, typeId) => {
     getDb().prepare('DELETE FROM room_types WHERE type_id = ?').run(typeId);
     return true;
   });
 
   // Rooms
-  ipcMain.handle('db:insertRoom', (_event, room) => {
+  ipcMain.handle('CH.insertRoom', (_event, room) => {
     const result = getDb().prepare('INSERT INTO rooms (room_number, room_type, base_price) VALUES (?, ?, ?)').run(room.room_number, room.room_type, room.base_price);
     return getDb().prepare('SELECT * FROM rooms WHERE room_id = ?').get(result.lastInsertRowid);
   });
 
-  ipcMain.handle('db:getRooms', () => {
+  ipcMain.handle('CH.getRooms', () => {
     return getDb().prepare('SELECT * FROM rooms ORDER BY room_number').all();
   });
 
-  ipcMain.handle('db:deleteRoom', (_event, roomId) => {
+  ipcMain.handle('CH.deleteRoom', (_event, roomId) => {
     const active = getDb().prepare("SELECT COUNT(*) as c FROM orders WHERE room_id = ? AND status != 'CHECKED_OUT'").get(roomId);
     if (active?.c > 0) throw new Error('该房间存在未退房的订单，无法删除');
     getDb().prepare('DELETE FROM financial_logs WHERE order_id IN (SELECT order_id FROM orders WHERE room_id = ?)').run(roomId);
@@ -39,7 +39,7 @@ function registerHandlers(ipcMain, getDb) {
     return true;
   });
 
-  ipcMain.handle('db:updateRoom', (_event, roomId, updates) => {
+  ipcMain.handle('CH.updateRoom', (_event, roomId, updates) => {
     const db = getDb();
     const oldRoom = db.prepare('SELECT * FROM rooms WHERE room_id = ?').get(roomId);
     const { sql, values } = buildUpdateQuery('rooms', 'room_id', roomId, updates);

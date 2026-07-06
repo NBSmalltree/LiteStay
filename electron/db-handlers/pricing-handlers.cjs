@@ -1,16 +1,16 @@
 // LiteStay - Pricing IPC Handlers
 
-const { buildUpdateQuery } = require('./utils.cjs');
+const { CH, buildUpdateQuery } = require('./utils.cjs');
 
 const round2 = (v) => Math.round(v * 100) / 100;
 
 function registerHandlers(ipcMain, getDb) {
 
-  ipcMain.handle('db:getPriceRules', () => {
+  ipcMain.handle('CH.getPriceRules', () => {
     return getDb().prepare('SELECT * FROM price_rules ORDER BY room_type, priority DESC').all();
   });
 
-  ipcMain.handle('db:insertPriceRule', (_event, rule) => {
+  ipcMain.handle('CH.insertPriceRule', (_event, rule) => {
     const stmt = getDb().prepare(`INSERT INTO price_rules (room_type, rule_name, rule_type, start_date, end_date,
 price_multiplier, fixed_price, priority, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
     const result = stmt.run(
@@ -20,7 +20,7 @@ price_multiplier, fixed_price, priority, is_active) VALUES (?, ?, ?, ?, ?, ?, ?,
     return getDb().prepare('SELECT * FROM price_rules WHERE rule_id = ?').get(result.lastInsertRowid);
   });
 
-  ipcMain.handle('db:updatePriceRule', (_event, ruleId, updates) => {
+  ipcMain.handle('CH.updatePriceRule', (_event, ruleId, updates) => {
     const processedUpdates = { ...updates };
     if (processedUpdates.is_active !== undefined) processedUpdates.is_active = processedUpdates.is_active ? 1 : 0;
     const { sql, values } = buildUpdateQuery('price_rules', 'rule_id', ruleId, processedUpdates);
@@ -28,12 +28,12 @@ price_multiplier, fixed_price, priority, is_active) VALUES (?, ?, ?, ?, ?, ?, ?,
     return getDb().prepare('SELECT * FROM price_rules WHERE rule_id = ?').get(ruleId);
   });
 
-  ipcMain.handle('db:deletePriceRule', (_event, ruleId) => {
+  ipcMain.handle('CH.deletePriceRule', (_event, ruleId) => {
     getDb().prepare('DELETE FROM price_rules WHERE rule_id = ?').run(ruleId);
     return true;
   });
 
-  ipcMain.handle('db:getPriceCalendar', (_event, roomType, dateFrom, dateTo) => {
+  ipcMain.handle('CH.getPriceCalendar', (_event, roomType, dateFrom, dateTo) => {
     const db = getDb();
     const basePrice = db.prepare('SELECT base_price FROM rooms WHERE room_type = ? LIMIT 1').get(roomType)?.base_price || 0;
     const rules = db.prepare(`SELECT * FROM price_rules WHERE room_type = ? AND is_active = 1 ORDER BY priority DESC`).all(roomType);

@@ -1,6 +1,6 @@
 // LiteStay - Financial IPC Handlers
 
-const { dialog } = require('electron');
+const { CH, dialog } = require('electron');
 const { buildUpdateQuery } = require('./utils.cjs');
 const ExcelJS = require('exceljs');
 
@@ -16,7 +16,7 @@ async function saveExcelDialog(title, defaultPath) {
 function registerHandlers(ipcMain, getDb, getMainWindow) {
 
   // Financial Logs
-  ipcMain.handle('db:insertFinancialLog', (_event, log) => {
+  ipcMain.handle('CH.insertFinancialLog', (_event, log) => {
     const stmt = getDb().prepare(
       'INSERT INTO financial_logs (order_id, type, amount, payment_method) VALUES (?, ?, ?, ?)'
     );
@@ -24,46 +24,46 @@ function registerHandlers(ipcMain, getDb, getMainWindow) {
     return getDb().prepare('SELECT * FROM financial_logs WHERE log_id = ?').get(result.lastInsertRowid);
   });
 
-  ipcMain.handle('db:getFinancialLogs', (_event, date) => {
+  ipcMain.handle('CH.getFinancialLogs', (_event, date) => {
     if (date) {
       return getDb().prepare("SELECT * FROM financial_logs WHERE DATE(created_at) = ? ORDER BY created_at DESC").all(date);
     }
     return getDb().prepare('SELECT * FROM financial_logs ORDER BY created_at DESC').all();
   });
 
-  ipcMain.handle('db:getFinancialLogsByOrder', (_event, orderId) => {
+  ipcMain.handle('CH.getFinancialLogsByOrder', (_event, orderId) => {
     return getDb().prepare('SELECT * FROM financial_logs WHERE order_id = ? ORDER BY created_at DESC').all(orderId);
   });
 
-  ipcMain.handle('db:updateFinancialLogPayment', (_event, orderId, paymentMethod) => {
+  ipcMain.handle('CH.updateFinancialLogPayment', (_event, orderId, paymentMethod) => {
     getDb().prepare('UPDATE financial_logs SET payment_method = ? WHERE order_id = ?').run(paymentMethod, orderId);
     return true;
   });
 
-  ipcMain.handle('db:updateFinancialLogAmount', (_event, orderId, type, amount) => {
+  ipcMain.handle('CH.updateFinancialLogAmount', (_event, orderId, type, amount) => {
     getDb().prepare('UPDATE financial_logs SET amount = ? WHERE order_id = ? AND type = ?').run(amount, orderId, type);
     return true;
   });
 
-  ipcMain.handle('db:deleteFinancialLog', (_event, logId) => {
+  ipcMain.handle('CH.deleteFinancialLog', (_event, logId) => {
     getDb().prepare('DELETE FROM financial_logs WHERE log_id = ?').run(logId);
     return true;
   });
 
-  ipcMain.handle('db:updateFinancialLog', (_event, logId, updates) => {
+  ipcMain.handle('CH.updateFinancialLog', (_event, logId, updates) => {
     const db = getDb();
     const { sql, values } = buildUpdateQuery('financial_logs', 'log_id', logId, updates);
     db.prepare(sql).run(...values);
     return true;
   });
 
-  ipcMain.handle('db:getIncidentalSums', () => {
+  ipcMain.handle('CH.getIncidentalSums', () => {
     return getDb().prepare(`SELECT order_id, SUM(amount) as total
 FROM financial_logs WHERE type = 'INCIDENTAL' AND order_id IS NOT NULL GROUP BY order_id`).all();
   });
 
   // Financial summary
-  ipcMain.handle('db:getFinancialSummary', (_event, dateFrom, dateTo) => {
+  ipcMain.handle('CH.getFinancialSummary', (_event, dateFrom, dateTo) => {
     const db = getDb();
     const byMethod = db.prepare(`SELECT payment_method, SUM(amount) as total
 FROM financial_logs WHERE DATE(created_at) BETWEEN ? AND ? GROUP BY payment_method`).all(dateFrom, dateTo);
@@ -77,7 +77,7 @@ FROM financial_logs WHERE DATE(created_at) BETWEEN ? AND ?`).get(dateFrom, dateT
   });
 
   // Financial logs with order/room detail
-  ipcMain.handle('db:getFinancialLogsDetailed', (_event, dateFrom, dateTo) => {
+  ipcMain.handle('CH.getFinancialLogsDetailed', (_event, dateFrom, dateTo) => {
     return getDb().prepare(`SELECT fl.*, o.guest_name, r.room_number
 FROM financial_logs fl LEFT JOIN orders o ON fl.order_id = o.order_id
 LEFT JOIN rooms r ON o.room_id = r.room_id
@@ -85,14 +85,14 @@ WHERE DATE(fl.created_at) BETWEEN ? AND ? ORDER BY fl.created_at DESC`).all(date
   });
 
   // Night audit: revenue by room type
-  ipcMain.handle('db:getRevenueByRoomType', (_event, dateFrom, dateTo) => {
+  ipcMain.handle('CH.getRevenueByRoomType', (_event, dateFrom, dateTo) => {
     return getDb().prepare(`SELECT r.room_type, SUM(fl.amount) as total, COUNT(DISTINCT fl.order_id) as order_count
 FROM financial_logs fl JOIN orders o ON fl.order_id = o.order_id JOIN rooms r ON o.room_id = r.room_id
 WHERE fl.type = 'ROOM_FEE' AND DATE(fl.created_at) BETWEEN ? AND ? GROUP BY r.room_type`).all(dateFrom, dateTo);
   });
 
   // Night audit: occupancy stats for a given date
-  ipcMain.handle('db:getOccupancyStats', (_event, date) => {
+  ipcMain.handle('CH.getOccupancyStats', (_event, date) => {
     const db = getDb();
     const totalRooms = db.prepare('SELECT COUNT(*) as count FROM rooms').get().count;
     const occupiedRooms = db.prepare(`SELECT COUNT(DISTINCT room_id) as count FROM orders
@@ -101,7 +101,7 @@ WHERE status = 'IN_HOUSE' AND check_in_date <= ? AND check_out_date > ?`).get(da
   });
 
   // Export financial logs to Excel
-  ipcMain.handle('db:exportFinancialLogs', async (_event, dateFrom, dateTo) => {
+  ipcMain.handle('CH.exportFinancialLogs', async (_event, dateFrom, dateTo) => {
     const filePath = await saveExcelDialog('导出财务报表', `财务报表_${dateFrom}_${dateTo}.xlsx`);
     if (!filePath) return null;
 
@@ -129,7 +129,7 @@ WHERE DATE(fl.created_at) BETWEEN ? AND ? ORDER BY fl.created_at DESC`).all(date
   });
 
   // Night audit: export night audit report to Excel
-  ipcMain.handle('db:exportNightAudit', async (_event, auditData) => {
+  ipcMain.handle('CH.exportNightAudit', async (_event, auditData) => {
     const { date, summary, byRoomType, byMethod, occupancy } = auditData;
     const filePath = await saveExcelDialog('导出夜审报表', `夜审报表_${date}.xlsx`);
     if (!filePath) return null;

@@ -1,6 +1,6 @@
 // LiteStay - Invoice IPC Handlers
 
-const { dialog } = require('electron');
+const { CH, dialog } = require('electron');
 const { buildUpdateQuery } = require('./utils.cjs');
 const ExcelJS = require('exceljs');
 
@@ -16,11 +16,11 @@ function registerHandlers(ipcMain, getDb) {
   const invoiceJoinSQL = `SELECT i.*, o.guest_name, r.room_number, o.check_in_date, o.check_out_date, o.actual_amount
 FROM invoices i JOIN orders o ON i.order_id = o.order_id JOIN rooms r ON o.room_id = r.room_id`;
 
-  ipcMain.handle('db:getInvoices', () => {
+  ipcMain.handle('CH.getInvoices', () => {
     return getDb().prepare(`${invoiceJoinSQL} ORDER BY i.created_at DESC`).all();
   });
 
-  ipcMain.handle('db:insertInvoice', (_event, invoice) => {
+  ipcMain.handle('CH.insertInvoice', (_event, invoice) => {
     const stmt = getDb().prepare(`INSERT INTO invoices (order_id, title, tax_number, company_address, phone,
 bank_name, bank_account, invoice_type, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
     const result = stmt.run(
@@ -32,24 +32,24 @@ bank_name, bank_account, invoice_type, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     return getDb().prepare('SELECT * FROM invoices WHERE invoice_id = ?').get(result.lastInsertRowid);
   });
 
-  ipcMain.handle('db:updateInvoice', (_event, invoiceId, updates) => {
+  ipcMain.handle('CH.updateInvoice', (_event, invoiceId, updates) => {
     const db = getDb();
     const { sql, values } = buildUpdateQuery('invoices', 'invoice_id', invoiceId, updates);
     db.prepare(sql).run(...values);
     return db.prepare('SELECT * FROM invoices WHERE invoice_id = ?').get(invoiceId);
   });
 
-  ipcMain.handle('db:deleteInvoice', (_event, invoiceId) => {
+  ipcMain.handle('CH.deleteInvoice', (_event, invoiceId) => {
     getDb().prepare('DELETE FROM invoices WHERE invoice_id = ?').run(invoiceId);
     return true;
   });
 
-  ipcMain.handle('db:markInvoiceIssued', (_event, invoiceId) => {
+  ipcMain.handle('CH.markInvoiceIssued', (_event, invoiceId) => {
     getDb().prepare(`UPDATE invoices SET status = 'issued', issued_at = datetime('now') WHERE invoice_id = ?`).run(invoiceId);
     return getDb().prepare('SELECT * FROM invoices WHERE invoice_id = ?').get(invoiceId);
   });
 
-  ipcMain.handle('db:exportInvoiceList', async (_event, status) => {
+  ipcMain.handle('CH.exportInvoiceList', async (_event, status) => {
     const filePath = await saveExcelDialog('导出发票清单', `发票清单_${new Date().toISOString().slice(0, 10)}.xlsx`);
     if (!filePath) return null;
 
