@@ -21,130 +21,50 @@ import type { FeatureKey } from '../shared/editions'
 
 type Page = 'dashboard' | 'rooms' | 'orders' | 'overview' | 'finance' | 'analytics' | 'pricing' | 'backup' | 'guests' | 'invoices'
 
+const NavIcon = ({ path }: { path: string }) => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d={path} />
+  </svg>
+)
+
 const allNavItems: { id: Page; labelKey: string; icon: JSX.Element; feature: FeatureKey }[] = [
-  {
-    id: 'dashboard',
-    labelKey: 'nav.matrix',
-    feature: 'page.roomMatrix',
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25a2.25 2.25 0 01-2.25-2.25v-2.25z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'rooms',
-    labelKey: 'nav.rooms',
-    feature: 'page.roomManagement',
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18 0h-18M2.25 9l4.5-1.636M18.75 3l-1.5.545m0 6.205l3 1m1.5.5l-1.5-.5M6.75 7.364V3h-3v18m3-13.636l10.5-3.819" />
-      </svg>
-    ),
-  },
-  {
-    id: 'orders',
-    labelKey: 'nav.orders',
-    feature: 'page.orders',
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'overview',
-    labelKey: 'nav.overview',
-    feature: 'page.overview',
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25a2.25 2.25 0 01-2.25-2.25v-2.25z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'finance',
-    labelKey: 'nav.finance',
-    feature: 'page.finance',
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'analytics',
-    labelKey: 'nav.analytics',
-    feature: 'page.analytics',
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'pricing',
-    labelKey: 'nav.pricing',
-    feature: 'page.pricing',
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'backup',
-    labelKey: 'nav.backup',
-    feature: 'page.backup',
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
-      </svg>
-    ),
-  },
-  {
-    id: 'guests',
-    labelKey: 'nav.guests',
-    feature: 'page.guests',
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'invoices',
-    labelKey: 'nav.invoices',
-    feature: 'page.invoices',
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-      </svg>
-    ),
-  },
+  { id: 'dashboard', labelKey: 'nav.matrix', feature: 'page.roomMatrix',
+    icon: <NavIcon path="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25a2.25 2.25 0 01-2.25-2.25v-2.25z" /> },
+  { id: 'rooms', labelKey: 'nav.rooms', feature: 'page.roomManagement',
+    icon: <NavIcon path="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18 0h-18M2.25 9l4.5-1.636M18.75 3l-1.5.545m0 6.205l3 1m1.5.5l-1.5-.5M6.75 7.364V3h-3v18m3-13.636l10.5-3.819" /> },
+  { id: 'orders', labelKey: 'nav.orders', feature: 'page.orders',
+    icon: <NavIcon path="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" /> },
+  { id: 'overview', labelKey: 'nav.overview', feature: 'page.overview',
+    icon: <NavIcon path="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25a2.25 2.25 0 01-2.25-2.25v-2.25z" /> },
+  { id: 'finance', labelKey: 'nav.finance', feature: 'page.finance',
+    icon: <NavIcon path="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" /> },
+  { id: 'analytics', labelKey: 'nav.analytics', feature: 'page.analytics',
+    icon: <NavIcon path="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /> },
+  { id: 'pricing', labelKey: 'nav.pricing', feature: 'page.pricing',
+    icon: <NavIcon path="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /> },
+  { id: 'backup', labelKey: 'nav.backup', feature: 'page.backup',
+    icon: <NavIcon path="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" /> },
+  { id: 'guests', labelKey: 'nav.guests', feature: 'page.guests',
+    icon: <NavIcon path="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /> },
+  { id: 'invoices', labelKey: 'nav.invoices', feature: 'page.invoices',
+    icon: <NavIcon path="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /> },
 ]
 
 function WindowControls() {
   const [isMaximized, setIsMaximized] = useState(false)
-
-  useEffect(() => {
-    window.electron.win.onMaximized(setIsMaximized)
-  }, [])
-
+  useEffect(() => { window.electron.win.onMaximized(setIsMaximized) }, [])
   return (
     <div className="titlebar-no-drag flex items-center">
-      <button onClick={() => window.electron.win.minimize()} className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" /></svg>
-      </button>
-      <button onClick={() => window.electron.win.maximize()} className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-        {isMaximized
-          ? <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 4h11a1 1 0 011 1v11M4 8h11a1 1 0 011 1v11H5a1 1 0 01-1-1V8z" /></svg>
-          : <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 3.75h15v15h-15z" /></svg>
-        }
-      </button>
-      <button onClick={() => window.electron.win.close()} className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-      </button>
+      {[
+        { label: 'minimize', onClick: () => window.electron.win.minimize(), icon: 'M5 12h14' },
+        { label: 'maximize', onClick: () => window.electron.win.maximize(),
+          icon: isMaximized ? 'M8 4h11a1 1 0 011 1v11M4 8h11a1 1 0 011 1v11H5a1 1 0 01-1-1V8z' : 'M4.5 3.75h15v15h-15z' },
+        { label: 'close', onClick: () => window.electron.win.close(), icon: 'M6 18L18 6M6 6l12 12' },
+      ].map(({ onClick, icon }) => (
+        <button key={icon} onClick={onClick} className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d={icon} /></svg>
+        </button>
+      ))}
     </div>
   )
 }
@@ -158,44 +78,25 @@ export default function App() {
   const [dbStatus, setDbStatus] = useState<'idle' | 'ok' | 'error'>('idle')
   const [showTypeManager, setShowTypeManager] = useState(false)
   const [showActivation, setShowActivation] = useState(false)
-
-  // Filter navigation items based on edition
-  const navItems = useMemo(() => {
-    return allNavItems.filter(item => hasFeature(item.feature))
-  }, [hasFeature])
-
-  // Check if trial is expired
+  const navItems = useMemo(() => allNavItems.filter(item => hasFeature(item.feature)), [hasFeature])
   const isTrialExpired = editionInfo.edition === 'trial' && editionInfo.trialExpired
-
-  // Check-in dialog state
   const [checkInRoom, setCheckInRoom] = useState<Room | null>(null)
   const [checkInDate, setCheckInDate] = useState('')
   const [refreshKey, setRefreshKey] = useState(0)
-
-  // Order detail dialog state
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [selectedOrderRoom, setSelectedOrderRoom] = useState<Room | null>(null)
-
-  // Orders data for reminders
   const [orders, setOrders] = useState<Order[]>([])
   const [orderFilter, setOrderFilter] = useState('ALL')
   const [orderDateFilter, setOrderDateFilter] = useState<string | undefined>(undefined)
-
-  // Room form state
   const [roomNumber, setRoomNumber] = useState('101')
   const [roomType, setRoomType] = useState('')
   const [roomPrice, setRoomPrice] = useState('200')
   const [formError, setFormError] = useState('')
-
   const { showAlert: appShowAlert, AlertComponent: appAlertComp } = useDialogs()
 
   const loadRooms = async () => {
-    try {
-      setRooms(await window.electron.db.getRooms())
-      setDbStatus('ok')
-    } catch {
-      setDbStatus('error')
-    }
+    try { setRooms(await window.electron.db.getRooms()); setDbStatus('ok') }
+    catch { setDbStatus('error') }
   }
 
   const loadRoomTypes = async () => {
@@ -205,46 +106,20 @@ export default function App() {
   }
 
   useEffect(() => { loadRooms(); loadRoomTypes() }, [])
-  useEffect(() => {
-    window.electron.win.onOrdersChanged(() => setRefreshKey(k => k + 1))
-  }, [])
+  useEffect(() => { window.electron.win.onOrdersChanged(() => setRefreshKey(k => k + 1)) }, [])
 
-  // Load orders for reminder banner
-  const loadOrders = async () => {
-    setOrders(await window.electron.db.getOrders())
-  }
+  const loadOrders = async () => { setOrders(await window.electron.db.getOrders()) }
   useEffect(() => { loadOrders() }, [refreshKey])
 
-  // Reminder computations
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), [])
   const tomorrowStr = useMemo(() => new Date(Date.now() + 86400000).toISOString().slice(0, 10), [])
-
-  const todayCheckIns = useMemo(
-    () => orders.filter(o => o.status === 'PREBOOK' && o.check_in_date === todayStr).length,
-    [orders, todayStr]
-  )
-  const tomorrowCheckOuts = useMemo(
-    () => orders.filter(o => o.status === 'IN_HOUSE' && o.check_out_date === tomorrowStr).length,
-    [orders, tomorrowStr]
-  )
-  const overdueOrders = useMemo(
-    () => orders.filter(o => o.status === 'IN_HOUSE' && o.check_out_date < todayStr).length,
-    [orders, todayStr]
-  )
-
-  // Always show reminders when on dashboard or rooms page
+  const todayCheckIns = useMemo(() => orders.filter(o => o.status === 'PREBOOK' && o.check_in_date === todayStr).length, [orders, todayStr])
+  const tomorrowCheckOuts = useMemo(() => orders.filter(o => o.status === 'IN_HOUSE' && o.check_out_date === tomorrowStr).length, [orders, tomorrowStr])
+  const overdueOrders = useMemo(() => orders.filter(o => o.status === 'IN_HOUSE' && o.check_out_date < todayStr).length, [orders, todayStr])
   const showReminders = page === 'dashboard' || page === 'rooms'
 
-  const handleReminderClick = (filter: string, checkInDate?: string) => {
-    setOrderFilter(filter)
-    setOrderDateFilter(checkInDate)
-    setPage('orders')
-  }
-
-  const toggleLanguage = () => {
-    const newLang = i18n.language.startsWith('zh') ? 'en' : 'zh'
-    i18n.changeLanguage(newLang)
-  }
+  const handleReminderClick = (filter: string, checkInDate?: string) => { setOrderFilter(filter); setOrderDateFilter(checkInDate); setPage('orders') }
+  const toggleLanguage = () => i18n.changeLanguage(i18n.language.startsWith('zh') ? 'en' : 'zh')
 
   const handleInsertRoom = async () => {
     setFormError('')
@@ -255,31 +130,35 @@ export default function App() {
       const next = parseInt(roomNumber, 10)
       if (!isNaN(next)) setRoomNumber(String(next + 1))
       await loadRooms()
-    } catch (e: any) {
-      setFormError(e?.message?.includes('UNIQUE') ? t('roomsPage.roomExists', { roomNumber: roomNumber.trim() }) : t('roomsPage.insertFailed'))
+    } catch (e: any) { setFormError(e?.message?.includes('UNIQUE') ? t('roomsPage.roomExists', { roomNumber: roomNumber.trim() }) : t('roomsPage.insertFailed')) }
+  }
+
+  if (editionLoading) return <div className="h-screen flex items-center justify-center bg-gray-50"><div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" /><p className="text-gray-600">{t('common.loading')}</p></div></div>
+  if (isTrialExpired) return <TrialExpiredPage />
+
+  const reminders = [
+    { label: 'todayCheckIns', count: todayCheckIns, filter: 'PREBOOK', date: todayStr, activeBg: 'bg-blue-50 border-blue-200 text-blue-700', activeCount: 'bg-blue-600', inactiveBg: 'bg-gray-50 border-gray-200 text-gray-500' },
+    { label: 'tomorrowCheckOuts', count: tomorrowCheckOuts, filter: 'IN_HOUSE', activeBg: 'bg-yellow-50 border-yellow-200 text-yellow-700', activeCount: 'bg-yellow-500', inactiveBg: 'bg-gray-50 border-gray-200 text-gray-500' },
+    { label: 'overdueOrders', count: overdueOrders, filter: 'IN_HOUSE', activeBg: 'bg-red-50 border-red-200 text-red-700', activeCount: 'bg-red-600', inactiveBg: 'bg-gray-50 border-gray-200 text-gray-500' },
+  ]
+
+  const renderPage = () => {
+    switch (page) {
+      case 'dashboard': return <div className="p-6 h-full"><RoomMatrix key={refreshKey} onCellClick={(room, date) => { setCheckInRoom(room); setCheckInDate(date) }} onOrderClick={(order, room) => { setSelectedOrder(order); setSelectedOrderRoom(room) }} /></div>
+      case 'rooms': return <div className="p-8"><RoomsPage rooms={rooms} roomTypes={roomTypes} roomNumber={roomNumber} setRoomNumber={setRoomNumber} roomType={roomType} setRoomType={setRoomType} roomPrice={roomPrice} setRoomPrice={setRoomPrice} onInsertRoom={handleInsertRoom} formError={formError} setFormError={setFormError} onOpenTypeManager={() => setShowTypeManager(true)} onDeleteRoom={async (id) => { try { await window.electron.db.deleteRoom(id); await loadRooms() } catch (e: any) { appShowAlert({ message: e?.message || t('roomsPage.deleteFailed'), variant: 'error' }) }}} onUpdateRoom={async (id, updates) => { try { await window.electron.db.updateRoom(id, updates); await loadRooms() } catch (e: any) { appShowAlert({ message: e?.message || t('roomsPage.updateFailed'), variant: 'error' }) }}} /></div>
+      case 'orders': return <div className="p-8"><OrdersPage refreshKey={refreshKey} initialFilter={orderFilter} initialCheckInDate={orderDateFilter} onEditOrder={(order, room) => { setSelectedOrder(order); setSelectedOrderRoom(room) }} /></div>
+      case 'overview': return <RoomStatusOverview key={refreshKey} refreshKey={refreshKey} onCheckIn={(room) => { setCheckInRoom(room); setCheckInDate(todayStr) }} onViewOrder={(order, room) => { setSelectedOrder(order); setSelectedOrderRoom(room) }} />
+      case 'finance': return <FinancePage refreshKey={refreshKey} />
+      case 'analytics': return <AnalyticsPage refreshKey={refreshKey} />
+      case 'pricing': return <PricingPage refreshKey={refreshKey} />
+      case 'backup': return <BackupPage refreshKey={refreshKey} />
+      case 'guests': return <div className="p-8"><GuestsPage refreshKey={refreshKey} /></div>
+      case 'invoices': return <InvoicesPage refreshKey={refreshKey} />
     }
-  }
-
-  // Show loading screen while edition info is loading
-  if (editionLoading) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">{t('common.loading')}</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Show trial expired page if trial is expired
-  if (isTrialExpired) {
-    return <TrialExpiredPage />
   }
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      {/* Title Bar */}
       <div className="titlebar-drag h-11 flex-shrink-0 flex items-center justify-between bg-white border-b border-gray-200">
         <div className="flex items-center gap-2.5 pl-4">
           <div className="w-6 h-6 rounded-md bg-primary-600 flex items-center justify-center">
@@ -290,34 +169,21 @@ export default function App() {
           <span className="text-sm font-semibold text-gray-900">LiteStay</span>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={toggleLanguage}
-            className="titlebar-no-drag px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
-            title={i18n.language.startsWith('zh') ? 'Switch to English' : '切换到中文'}
-          >
-            {i18n.language.startsWith('zh') ? 'EN' : '中'}
-          </button>
+          <button onClick={toggleLanguage} className="titlebar-no-drag px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors" title={i18n.language.startsWith('zh') ? 'Switch to English' : '切换到中文'}>{i18n.language.startsWith('zh') ? 'EN' : '中'}</button>
           <WindowControls />
         </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
         <aside className="w-56 flex-shrink-0 bg-white border-r border-gray-100 flex flex-col">
           <nav className="flex-1 px-3 py-4 space-y-1">
             {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setPage(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                  ${page === item.id ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
-              >
-                {item.icon}
-                {t(item.labelKey)}
+              <button key={item.id} onClick={() => setPage(item.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${page === item.id ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}>
+                {item.icon}{t(item.labelKey)}
               </button>
             ))}
           </nav>
-
           <div className="px-3 py-3 border-t border-gray-100 space-y-2">
             <button onClick={() => setShowTypeManager(true)} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -330,183 +196,35 @@ export default function App() {
               <span className={`inline-block w-2 h-2 rounded-full ${dbStatus === 'ok' ? 'bg-green-400' : dbStatus === 'error' ? 'bg-red-400' : 'bg-gray-300'}`} />
               {dbStatus === 'ok' ? t('nav.dbConnected') : dbStatus === 'error' ? t('nav.dbFailed') : t('nav.dbConnecting')}
             </div>
-            <div
-              className="flex items-center gap-2 px-3 py-1 text-xs text-gray-400 cursor-pointer hover:text-gray-600 hover:bg-gray-50 rounded transition-colors"
-              onClick={() => setShowActivation(true)}
-              title={t('activation.clickToActivate')}
-            >
-              <span className={`inline-block w-2 h-2 rounded-full ${
-                editionInfo.edition === 'ultimate' ? 'bg-yellow-400' :
-                editionInfo.edition === 'pro' ? 'bg-blue-400' :
-                editionInfo.edition === 'basic' ? 'bg-green-400' : 'bg-gray-400'
-              }`} />
+            <div className="flex items-center gap-2 px-3 py-1 text-xs text-gray-400 cursor-pointer hover:text-gray-600 hover:bg-gray-50 rounded transition-colors" onClick={() => setShowActivation(true)} title={t('activation.clickToActivate')}>
+              <span className={`inline-block w-2 h-2 rounded-full ${editionInfo.edition === 'ultimate' ? 'bg-yellow-400' : editionInfo.edition === 'pro' ? 'bg-blue-400' : editionInfo.edition === 'basic' ? 'bg-green-400' : 'bg-gray-400'}`} />
               {t(`editions.${editionInfo.edition}`)}
-              {editionInfo.edition === 'trial' && editionInfo.trialDaysRemaining !== null && (
-                <span className="text-gray-500">({t('trial.daysRemaining', { days: editionInfo.trialDaysRemaining })})</span>
-              )}
+              {editionInfo.edition === 'trial' && editionInfo.trialDaysRemaining !== null && <span className="text-gray-500">({t('trial.daysRemaining', { days: editionInfo.trialDaysRemaining })})</span>}
             </div>
           </div>
         </aside>
 
-        {/* Main content */}
         <main className="flex-1 overflow-auto bg-gray-50">
-          {/* Reminder banner */}
           {showReminders && (
             <div className="px-6 pt-4 flex flex-wrap gap-2">
-              <button
-                onClick={() => handleReminderClick('PREBOOK', todayStr)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors cursor-pointer ${
-                  todayCheckIns > 0
-                    ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
-                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
-                }`}
-              >
-                <span className="text-base">📥</span>
-                <span>{t('reminders.todayCheckIns')}</span>
-                <span className={`text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ${
-                  todayCheckIns > 0 ? 'bg-blue-600 text-white' : 'bg-gray-400 text-white'
-                }`}>{todayCheckIns}</span>
-              </button>
-              <button
-                onClick={() => handleReminderClick('IN_HOUSE')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors cursor-pointer ${
-                  tomorrowCheckOuts > 0
-                    ? 'bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100'
-                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
-                }`}
-              >
-                <span className="text-base">📤</span>
-                <span>{t('reminders.tomorrowCheckOuts')}</span>
-                <span className={`text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ${
-                  tomorrowCheckOuts > 0 ? 'bg-yellow-500 text-white' : 'bg-gray-400 text-white'
-                }`}>{tomorrowCheckOuts}</span>
-              </button>
-              <button
-                onClick={() => handleReminderClick('IN_HOUSE')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors cursor-pointer ${
-                  overdueOrders > 0
-                    ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
-                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
-                }`}
-              >
-                <span className="text-base">⏰</span>
-                <span>{t('reminders.overdueOrders')}</span>
-                <span className={`text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ${
-                  overdueOrders > 0 ? 'bg-red-600 text-white' : 'bg-gray-400 text-white'
-                }`}>{overdueOrders}</span>
-              </button>
+              {reminders.map(({ label, count, filter, date, activeBg, activeCount, inactiveBg }) => (
+                <button key={label} onClick={() => handleReminderClick(filter, date)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors cursor-pointer ${count > 0 ? activeBg : inactiveBg}`}>
+                  <span className="text-base">{label === 'todayCheckIns' ? '📥' : label === 'tomorrowCheckOuts' ? '📤' : '⏰'}</span>
+                  <span>{t(`reminders.${label}`)}</span>
+                  <span className={`text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ${count > 0 ? `${activeCount} text-white` : 'bg-gray-400 text-white'}`}>{count}</span>
+                </button>
+              ))}
             </div>
           )}
-
-          <ErrorBoundary>
-          {page === 'dashboard' && (
-            <div className="p-6 h-full">
-              <RoomMatrix key={refreshKey}
-                onCellClick={(room, date) => {
-                  setCheckInRoom(room)
-                  setCheckInDate(date)
-                }}
-                onOrderClick={(order, room) => {
-                  setSelectedOrder(order)
-                  setSelectedOrderRoom(room)
-                }}
-              />
-            </div>
-          )}
-          {page === 'rooms' && (
-            <div className="p-8">
-              <RoomsPage
-                rooms={rooms} roomTypes={roomTypes}
-                roomNumber={roomNumber} setRoomNumber={setRoomNumber}
-                roomType={roomType} setRoomType={setRoomType}
-                roomPrice={roomPrice} setRoomPrice={setRoomPrice}
-                onInsertRoom={handleInsertRoom} formError={formError} setFormError={setFormError}
-                onOpenTypeManager={() => setShowTypeManager(true)}
-                onDeleteRoom={async (roomId) => {
-                  try {
-                    await window.electron.db.deleteRoom(roomId)
-                    await loadRooms()
-                  } catch (e: any) {
-                    appShowAlert({ message: e?.message || t('roomsPage.deleteFailed'), variant: 'error' })
-                  }
-                }}
-                onUpdateRoom={async (roomId, updates) => {
-                  try {
-                    await window.electron.db.updateRoom(roomId, updates)
-                    await loadRooms()
-                  } catch (e: any) {
-                    appShowAlert({ message: e?.message || t('roomsPage.updateFailed'), variant: 'error' })
-                  }
-                }}
-              />
-            </div>
-          )}
-          {page === 'orders' && (
-            <div className="p-8">
-              <OrdersPage refreshKey={refreshKey} initialFilter={orderFilter} initialCheckInDate={orderDateFilter} onEditOrder={(order, room) => {
-                setSelectedOrder(order)
-                setSelectedOrderRoom(room)
-              }} />
-            </div>
-          )}
-          {page === 'overview' && (
-            <RoomStatusOverview
-              key={refreshKey}
-              refreshKey={refreshKey}
-              onCheckIn={(room) => {
-                setCheckInRoom(room)
-                setCheckInDate(todayStr)
-              }}
-              onViewOrder={(order, room) => {
-                setSelectedOrder(order)
-                setSelectedOrderRoom(room)
-              }}
-            />
-          )}
-          {page === 'finance' && (
-            <FinancePage refreshKey={refreshKey} />
-          )}
-          {page === 'analytics' && (
-            <AnalyticsPage refreshKey={refreshKey} />
-          )}
-          {page === 'pricing' && (
-            <PricingPage refreshKey={refreshKey} />
-          )}
-          {page === 'backup' && (
-            <BackupPage refreshKey={refreshKey} />
-          )}
-          {page === 'guests' && (
-            <div className="p-8">
-              <GuestsPage refreshKey={refreshKey} />
-            </div>
-          )}
-          {page === 'invoices' && (
-            <InvoicesPage refreshKey={refreshKey} />
-          )}
-          </ErrorBoundary>
+          <ErrorBoundary>{renderPage()}</ErrorBoundary>
         </main>
       </div>
 
       <RoomTypeManager open={showTypeManager} onClose={() => setShowTypeManager(false)} onChanged={loadRoomTypes} />
-      <CheckInDialog
-        open={!!checkInRoom}
-        room={checkInRoom}
-        checkInDate={checkInDate}
-        onClose={() => setCheckInRoom(null)}
-        onSaved={() => { setCheckInRoom(null); setRefreshKey(k => k + 1) }}
-      />
-      <OrderDetailDialog
-        open={!!selectedOrder}
-        order={selectedOrder}
-        room={selectedOrderRoom}
-        onClose={() => { setSelectedOrder(null); setSelectedOrderRoom(null) }}
-        onSaved={() => { setSelectedOrder(null); setSelectedOrderRoom(null); setRefreshKey(k => k + 1) }}
-        onDeleted={() => { setSelectedOrder(null); setSelectedOrderRoom(null); setRefreshKey(k => k + 1) }}
-      />
-      <ActivationDialog
-        open={showActivation}
-        onClose={() => setShowActivation(false)}
-      />
+      <CheckInDialog open={!!checkInRoom} room={checkInRoom} checkInDate={checkInDate} onClose={() => setCheckInRoom(null)} onSaved={() => { setCheckInRoom(null); setRefreshKey(k => k + 1) }} />
+      <OrderDetailDialog open={!!selectedOrder} order={selectedOrder} room={selectedOrderRoom} onClose={() => { setSelectedOrder(null); setSelectedOrderRoom(null) }} onSaved={() => { setSelectedOrder(null); setSelectedOrderRoom(null); setRefreshKey(k => k + 1) }} onDeleted={() => { setSelectedOrder(null); setSelectedOrderRoom(null); setRefreshKey(k => k + 1) }} />
+      <ActivationDialog open={showActivation} onClose={() => setShowActivation(false)} />
       {appAlertComp}
     </div>
   )
