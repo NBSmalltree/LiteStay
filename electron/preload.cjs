@@ -78,4 +78,9 @@ contextBridge.exposeInMainWorld('electron', {
     markInvoiceIssued: (invoiceId) => ipcRenderer.invoke('db:markInvoiceIssued', invoiceId),
     exportInvoiceList: (status) => ipcRenderer.invoke('db:exportInvoiceList', status),
   },
+  edition: {
+    getInfo: () => ipcRenderer.invoke('edition:get-info'),
+    checkTrial: () => ipcRenderer.invoke('edition:check-trial'),
+    activate: (licenseKey) => ipcRenderer.invoke('edition:activate', licenseKey),
+  },
 });

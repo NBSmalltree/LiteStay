@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Card, Button, Dialog, Input, Select, DatePicker } from '../../components'
+import { Card, Button, Dialog, Input, Select, DatePicker, useDialogs } from '../../components'
+import { useEdition } from '../../hooks/useEdition'
+import UpgradeBadge from '../../components/UpgradeBadge'
 import type { PriceRule, PriceCalendar, RoomType } from '../../../shared/types'
 
 interface PricingPageProps {
@@ -9,6 +11,7 @@ interface PricingPageProps {
 
 export default function PricingPage({ refreshKey }: PricingPageProps) {
   const { t } = useTranslation()
+  const { hasFeature } = useEdition()
   const [rules, setRules] = useState<PriceRule[]>([])
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
   const [calendarRoomType, setCalendarRoomType] = useState('')
@@ -16,6 +19,8 @@ export default function PricingPage({ refreshKey }: PricingPageProps) {
   const [calendarLoading, setCalendarLoading] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
   const [editingRule, setEditingRule] = useState<PriceRule | null>(null)
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null)
+  const { showConfirm, ConfirmComponent } = useDialogs()
 
   // Load data
   const loadRules = async () => {
@@ -78,10 +83,19 @@ export default function PricingPage({ refreshKey }: PricingPageProps) {
     await loadRules()
   }
 
-  const handleDeleteRule = async (ruleId: number) => {
-    if (!confirm(t('pricing.confirmDelete'))) return
-    await window.electron.db.deletePriceRule(ruleId)
-    await loadRules()
+  const handleDeleteRule = (ruleId: number) => {
+    setPendingDeleteId(ruleId)
+    showConfirm({
+      title: t('common.confirm'),
+      message: t('pricing.confirmDelete'),
+      confirmText: t('common.delete'),
+      variant: 'danger',
+      onConfirm: async () => {
+        setPendingDeleteId(null)
+        await window.electron.db.deletePriceRule(ruleId)
+        await loadRules()
+      },
+    })
   }
 
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), [])
@@ -219,6 +233,8 @@ export default function PricingPage({ refreshKey }: PricingPageProps) {
         </div>
       </div>
 
+      {ConfirmComponent}
+
       {/* Rule edit dialog */}
       <RuleEditDialog
         open={showDialog}
@@ -261,8 +277,10 @@ function RuleEditDialog({
   const RULE_TYPES = [
     { value: 'weekday', label: t('pricing.weekday') },
     { value: 'weekend', label: t('pricing.weekend') },
-    { value: 'holiday', label: t('pricing.holiday') },
-    { value: 'custom', label: t('pricing.custom') },
+    ...(hasFeature('pricing.holidayRules') ? [
+      { value: 'holiday', label: t('pricing.holiday') },
+      { value: 'custom', label: t('pricing.custom') },
+    ] : []),
   ]
 
   const needDateRange = ruleType === 'holiday' || ruleType === 'custom'
@@ -328,7 +346,7 @@ function RuleEditDialog({
       if (rule) {
         await window.electron.db.updatePriceRule(rule.rule_id, data)
       } else {
-        await window.electron.db.insertPriceRule(data as any)
+        await window.electron.db.insertPriceRule(data)
       }
       onSaved()
     } catch (e: any) {
@@ -348,7 +366,7 @@ function RuleEditDialog({
           <Select
             label={t('pricing.ruleType')}
             value={ruleType}
-            onChange={e => setRuleType(e.target.value as any)}
+            onChange={e => setRuleType(e.target.value as 'weekday' | 'weekend' | 'holiday' | 'custom')}
           >
             {RULE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </Select>

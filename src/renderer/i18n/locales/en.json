@@ -566,5 +566,46 @@
     "meituan": "Meituan",
     "returning": "Returning",
     "other": "Other"
+  },
+  "editions": {
+    "trial": "Trial",
+    "basic": "Basic",
+    "pro": "Professional",
+    "ultimate": "Enterprise"
+  },
+  "trial": {
+    "expired": "Trial Expired",
+    "expiredMessage": "Your 30-day trial period has ended. Please contact the administrator to get a license for continued use.",
+    "closeApp": "Close Application",
+    "daysRemaining": "{{days}} days remaining",
+    "daysRemainingSoon": "Trial ends in {{days}} days. Contact admin to renew."
+  },
+  "upgrade": {
+    "required": "Requires {{edition}}",
+    "contactAdmin": "Contact admin to upgrade your edition"
+  },
+  "activation": {
+    "title": "Activate Edition",
+    "currentEdition": "Current Edition",
+    "licenseKey": "License Key",
+    "enterKey": "Please enter a license key",
+    "enterKeyPlaceholder": "Enter your license key",
+    "activate": "Activate",
+    "activating": "Activating...",
+    "success": "Activation successful! Edition has been updated.",
+    "failed": "Activation failed. Please check if the license key is correct.",
+    "clickToActivate": "Click to activate or upgrade edition",
+    "upgradeOptions": "Upgrade Options",
+    "upgradeToPro": "Upgrade to Pro",
+    "unlockFeatures": "Unlock: Order management, Financial statistics, Data analytics, Invoice management, and more",
+    "upgradeToUltimate": "Upgrade to Ultimate",
+    "unlockAdvancedFeatures": "Unlock: Advanced search, Report export, Custom date ranges, Full editing, and more",
+    "upgradeFromBasicToPro": "Upgrade to Pro",
+    "upgradeFromBasicToProFeatures": "Unlock: Financial statistics, Invoice management, Room type pricing, Data backup",
+    "upgradeFromBasicToUltimateNote": "Ultimate also includes: Data analytics, Advanced search, Report export, Full editing",
+    "trialUpgradeToBasic": "Upgrade to Basic",
+    "trialUpgradeToBasicFeatures": "Room management, Room status, Order management, Customer management",
+    "trialUpgradeToProFeatures": "Financial statistics, Invoice management, Room type pricing, Data backup",
+    "trialUpgradeToUltimateFeatures": "Data analytics, Advanced search, Report export, Full editing"
   }
 }

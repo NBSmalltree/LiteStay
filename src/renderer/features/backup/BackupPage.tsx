@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Card, Button, Input, Dialog } from '../../components'
-import type { BackupInfo } from '../../../../shared/types'
+import { useEdition } from '../../hooks/useEdition'
+import UpgradeBadge from '../../components/UpgradeBadge'
+import type { BackupInfo } from '../../../shared/types'
 
 const formatSize = (bytes: number): string => {
   if (bytes < 1024) return bytes + ' B'
@@ -16,6 +18,7 @@ const formatTime = (iso: string): string => {
 
 export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
   const { t } = useTranslation()
+  const { hasFeature } = useEdition()
   const [backups, setBackups] = useState<BackupInfo[]>([])
   const [loading, setLoading] = useState(false)
   const [customName, setCustomName] = useState('')
@@ -169,9 +172,15 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
         <Button onClick={() => setShowCreateDialog(true)} disabled={loading}>
           {t('backup.createBackup')}
         </Button>
-        <Button variant="secondary" onClick={handleImport} disabled={loading}>
-          {t('backup.import')}
-        </Button>
+        {hasFeature('backup.importExport') ? (
+          <Button variant="secondary" onClick={handleImport} disabled={loading}>
+            {t('backup.import')}
+          </Button>
+        ) : (
+          <Button variant="secondary" disabled>
+            {t('backup.import')} <UpgradeBadge requiredEdition="pro" />
+          </Button>
+        )}
       </div>
 
       {/* Backup list */}
@@ -198,14 +207,16 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
                   >
                     {t('backup.restore')}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleExport(backup)}
-                    disabled={loading}
-                  >
-                    {t('backup.export')}
-                  </Button>
+                  {hasFeature('backup.importExport') && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleExport(backup)}
+                      disabled={loading}
+                    >
+                      {t('backup.export')}
+                    </Button>
+                  )}
                   <Button
                     variant="danger"
                     size="sm"

@@ -566,5 +566,46 @@
     "meituan": "美团",
     "returning": "回头客",
     "other": "其他"
+  },
+  "editions": {
+    "trial": "体验版",
+    "basic": "基础版",
+    "pro": "进阶版",
+    "ultimate": "至尊版"
+  },
+  "trial": {
+    "expired": "体验版已到期",
+    "expiredMessage": "当前为体验版，30天试用期已结束。如需继续使用请联系管理员获取正式授权。",
+    "closeApp": "退出程序",
+    "daysRemaining": "剩余{{days}}天",
+    "daysRemainingSoon": "体验版剩余{{days}}天，如需续期请联系管理员"
+  },
+  "upgrade": {
+    "required": "需要{{edition}}",
+    "contactAdmin": "请联系管理员升级版本"
+  },
+  "activation": {
+    "title": "版本激活",
+    "currentEdition": "当前版本",
+    "licenseKey": "授权码",
+    "enterKey": "请输入授权码",
+    "enterKeyPlaceholder": "请输入您的授权码",
+    "activate": "激活",
+    "activating": "激活中...",
+    "success": "激活成功！版本已更新。",
+    "failed": "激活失败，请检查授权码是否正确。",
+    "clickToActivate": "点击激活或升级版本",
+    "upgradeOptions": "升级选项",
+    "upgradeToPro": "升级到专业版",
+    "unlockFeatures": "解锁：订单管理、财务统计、数据分析、发票管理等专业功能",
+    "upgradeToUltimate": "升级到终极版",
+    "unlockAdvancedFeatures": "解锁：高级搜索、报表导出、自定义日期范围、完整编辑等高级功能",
+    "upgradeFromBasicToPro": "升级到专业版",
+    "upgradeFromBasicToProFeatures": "解锁：财务统计、发票管理、房型定价、数据备份",
+    "upgradeFromBasicToUltimateNote": "终极版还包含：数据分析、高级搜索、报表导出、完整编辑",
+    "trialUpgradeToBasic": "升级到基础版",
+    "trialUpgradeToBasicFeatures": "房间管理、客房状态、订单管理、客户管理",
+    "trialUpgradeToProFeatures": "财务统计、发票管理、房型定价、数据备份",
+    "trialUpgradeToUltimateFeatures": "数据分析、高级搜索、报表导出、完整编辑"
   }
 }

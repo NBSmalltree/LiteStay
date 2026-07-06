@@ -2,7 +2,12 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { Card, Input, Select, Dialog, DatePicker } from '../../components'
-import type { FinancialSummary, FinancialLogDetailed, Order, Room, NightAuditData, RevenueByRoomType, OccupancyStats } from '../../../shared/types'
+import { useDialogs } from '../../components/useDialogs'
+import { useEdition } from '../../hooks/useEdition'
+import { formatTime, typeBadgeClass, fmtCurrency, METHOD_COLORS } from '../../utils'
+import UpgradeBadge from '../../components/UpgradeBadge'
+import NightAuditReport from './NightAuditReport'
+import type { FinancialSummary, FinancialLogDetailed, Order, NightAuditData, RevenueByRoomType, OccupancyStats } from '../../../shared/types'
 
 const today = () => new Date().toISOString().slice(0, 10)
 const firstOfMonth = () => {
@@ -11,10 +16,10 @@ const firstOfMonth = () => {
 }
 
 type Range = 'today' | 'month' | 'custom'
-const METHOD_COLORS: Record<string, string> = { WeChat: '#07C160', Alipay: '#1677FF', Cash: '#F59E0B' }
 
 export default function FinancePage({ refreshKey }: { refreshKey: number }) {
   const { t, i18n } = useTranslation()
+  const { hasFeature } = useEdition()
   const [range, setRange] = useState<Range>('today')
   const [dateFrom, setDateFrom] = useState(today())
   const [dateTo, setDateTo] = useState(today())
@@ -23,7 +28,7 @@ export default function FinancePage({ refreshKey }: { refreshKey: number }) {
   const [exporting, setExporting] = useState(false)
   const [showIncidental, setShowIncidental] = useState(false)
   const [incAmount, setIncAmount] = useState('100')
-  const [incMethod, setIncMethod] = useState('WeChat')
+  const [incMethod, setIncMethod] = useState<'WeChat' | 'Alipay' | 'Cash'>('WeChat')
   const [incOrderId, setIncOrderId] = useState('')
   const [orders, setOrders] = useState<Order[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
@@ -34,6 +39,8 @@ export default function FinancePage({ refreshKey }: { refreshKey: number }) {
   const [auditExporting, setAuditExporting] = useState(false)
   const resolvedFrom = range === 'today' ? today() : range === 'month' ? firstOfMonth() : dateFrom
   const resolvedTo = range === 'today' ? today() : range === 'month' ? today() : dateTo
+
+  const { showAlert, showConfirm, AlertComponent, ConfirmComponent } = useDialogs()
 
   const TYPE_LABEL: Record<string, string> = useMemo(() => ({
     ROOM_FEE: t('finance.roomFeeType'),
@@ -82,7 +89,7 @@ export default function FinancePage({ refreshKey }: { refreshKey: number }) {
     setExporting(true)
     try {
       const path = await window.electron.db.exportFinancialLogs(resolvedFrom, resolvedTo)
-      if (path) alert(`${t('finance.exportedTo')}：${path}`)
+      if (path) showAlert({ message: `${t('finance.exportedTo')}：${path}`, variant: 'success' })
     } finally {
       setExporting(false)
     }
@@ -113,7 +120,7 @@ export default function FinancePage({ refreshKey }: { refreshKey: number }) {
       setShowNightAuditReport(true)
     } catch (e) {
       console.error('[NightAudit] error:', e)
-      alert(t('finance.nightAuditLoadFailed'))
+      showAlert({ message: t('finance.nightAuditLoadFailed'), variant: 'error' })
     } finally {
       setAuditLoading(false)
     }
@@ -155,10 +162,10 @@ export default function FinancePage({ refreshKey }: { refreshKey: number }) {
     setAuditExporting(true)
     try {
       const path = await window.electron.db.exportNightAudit(auditData)
-      if (path) alert(`${t('finance.nightAuditExportedTo')}：${path}`)
+      if (path) showAlert({ message: `${t('finance.nightAuditExportedTo')}：${path}`, variant: 'success' })
     } catch (e) {
       console.error('[NightAudit] export error:', e)
-      alert(t('finance.exportFailed'))
+      showAlert({ message: t('finance.exportFailed'), variant: 'error' })
     } finally {
       setAuditExporting(false)
     }
@@ -185,16 +192,28 @@ export default function FinancePage({ refreshKey }: { refreshKey: number }) {
             </svg>
             {auditLoading ? t('finance.nightAuditing') : t('finance.nightAudit')}
           </button>
-          <button
-            onClick={handleExport}
-            disabled={exporting || logs.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-            </svg>
-            {exporting ? t('finance.exporting') : t('finance.export')}
-          </button>
+          {hasFeature('finance.excelExport') ? (
+            <button
+              onClick={handleExport}
+              disabled={exporting || logs.length === 0}
+              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              {exporting ? t('finance.exporting') : t('finance.export')}
+            </button>
+          ) : (
+            <button
+              disabled
+              className="flex items-center gap-2 px-4 py-2 bg-gray-400 text-white text-sm font-medium rounded-lg opacity-60 cursor-not-allowed"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              {t('finance.export')} <UpgradeBadge requiredEdition="pro" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -221,55 +240,57 @@ export default function FinancePage({ refreshKey }: { refreshKey: number }) {
       </div>
 
       {/* Incidental charge form */}
-      {!showIncidental ? (
-        <button onClick={() => setShowIncidental(true)}
-          className="text-sm text-primary-600 hover:text-primary-700 hover:underline">
-          {t('finance.addIncidental')}
-        </button>
-      ) : (
-        <div className="flex items-end gap-3 p-4 bg-amber-50 rounded-xl border border-amber-200">
-          <div className="w-32">
-            <Input label={t('finance.incidentalAmount')} id="inc-amount" type="number" value={incAmount}
-              onChange={e => setIncAmount(e.target.value)} />
-          </div>
-          <div className="w-28">
-            <Select label={t('finance.incidentalMethod')} id="inc-method" value={incMethod}
-              onChange={e => setIncMethod(e.target.value)}>
-              {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-            </Select>
-          </div>
-          <div className="w-40">
-            <Select label={t('finance.incidentalOrder')} id="inc-order" value={incOrderId}
-              onChange={e => setIncOrderId(e.target.value)}>
-              <option value="">{t('finance.noOrder')}</option>
-              {orders.map(o => {
-                const r = rooms.find(rm => rm.room_id === o.room_id)
-                return <option key={o.order_id} value={o.order_id}>{r?.room_number ?? '?'} - {o.guest_name}</option>
-              })}
-            </Select>
-          </div>
-          <button
-            onClick={async () => {
-              await window.electron.db.insertFinancialLog({
-                order_id: incOrderId ? Number(incOrderId) : null,
-                type: 'INCIDENTAL',
-                amount: Number(incAmount),
-                payment_method: incMethod as any,
-              })
-              setShowIncidental(false)
-              setIncAmount('100')
-              setIncOrderId('')
-              load()
-            }}
-            className="px-4 py-2 text-sm font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
-          >
-            {t('finance.confirmRecord')}
+      {hasFeature('finance.incidentals') && (
+        !showIncidental ? (
+          <button onClick={() => setShowIncidental(true)}
+            className="text-sm text-primary-600 hover:text-primary-700 hover:underline">
+            {t('finance.addIncidental')}
           </button>
-          <button onClick={() => setShowIncidental(false)}
-            className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
-            {t('common.cancel')}
-          </button>
-        </div>
+        ) : (
+          <div className="flex items-end gap-3 p-4 bg-amber-50 rounded-xl border border-amber-200">
+            <div className="w-32">
+              <Input label={t('finance.incidentalAmount')} id="inc-amount" type="number" value={incAmount}
+                onChange={e => setIncAmount(e.target.value)} />
+            </div>
+            <div className="w-28">
+              <Select label={t('finance.incidentalMethod')} id="inc-method" value={incMethod}
+                onChange={e => setIncMethod(e.target.value)}>
+                {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </Select>
+            </div>
+            <div className="w-40">
+              <Select label={t('finance.incidentalOrder')} id="inc-order" value={incOrderId}
+                onChange={e => setIncOrderId(e.target.value)}>
+                <option value="">{t('finance.noOrder')}</option>
+                {orders.map(o => {
+                  const r = rooms.find(rm => rm.room_id === o.room_id)
+                  return <option key={o.order_id} value={o.order_id}>{r?.room_number ?? '?'} - {o.guest_name}</option>
+                })}
+              </Select>
+            </div>
+            <button
+              onClick={async () => {
+                await window.electron.db.insertFinancialLog({
+                  order_id: incOrderId ? Number(incOrderId) : null,
+                  type: 'INCIDENTAL',
+                  amount: Number(incAmount),
+                  payment_method: incMethod,
+                })
+                setShowIncidental(false)
+                setIncAmount('100')
+                setIncOrderId('')
+                load()
+              }}
+              className="px-4 py-2 text-sm font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
+            >
+              {t('finance.confirmRecord')}
+            </button>
+            <button onClick={() => setShowIncidental(false)}
+              className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+              {t('common.cancel')}
+            </button>
+          </div>
+        )
       )}
 
       {/* Summary cards */}
@@ -437,171 +458,16 @@ export default function FinancePage({ refreshKey }: { refreshKey: number }) {
       </Dialog>
 
       {/* Night Audit Report Dialog */}
-      <Dialog
+      <NightAuditReport
         open={showNightAuditReport}
+        auditData={auditData}
+        auditExporting={auditExporting}
+        onPrint={handlePrintAudit}
+        onExport={handleExportAudit}
         onClose={() => setShowNightAuditReport(false)}
-        title={auditData ? `${auditData.date} ${t('finance.auditReport')}` : t('finance.auditReport')}
-        maxWidth="xl"
-      >
-        {auditData && (
-          <div>
-            <div id="night-audit-print" className="space-y-5 max-h-[65vh] overflow-y-auto pr-1">
-              {/* Income Summary */}
-              <div>
-                <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5 mb-3">
-                  <span className="w-5 h-5 rounded bg-green-50 flex items-center justify-center text-green-600 text-xs">¥</span>
-                  {t('finance.incomeSummary')}
-                </h2>
-                <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                  <div className="flex justify-between items-baseline">
-                    <span className="text-sm text-gray-500">{t('finance.totalIncome')}</span>
-                    <span className="text-xl font-bold text-gray-900">{fmtCurrency(auditData.summary.total)}</span>
-                  </div>
-                  <div className="border-t border-gray-200 pt-2 space-y-1.5">
-                    <div className="flex justify-between items-center pl-4">
-                      <span className="text-sm text-gray-500">{t('finance.roomFee')}</span>
-                      <span className="text-sm font-semibold text-gray-800">{fmtCurrency(auditData.summary.roomFee)}</span>
-                    </div>
-                    <div className="flex justify-between items-center pl-4">
-                      <span className="text-sm text-gray-500">{t('finance.deposit')}</span>
-                      <span className="text-sm font-semibold text-gray-800">{fmtCurrency(auditData.summary.deposit)}</span>
-                    </div>
-                    <div className="flex justify-between items-center pl-4">
-                      <span className="text-sm text-gray-500">{t('finance.incidental')}</span>
-                      <span className="text-sm font-semibold text-gray-800">{fmtCurrency(auditData.summary.incidental)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Revenue by Room Type */}
-              {auditData.byRoomType.length > 0 && (
-                <div>
-                  <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5 mb-3">
-                    <span className="w-5 h-5 rounded bg-blue-50 flex items-center justify-center text-blue-600 text-xs">房</span>
-                    {t('finance.byRoomType')}
-                  </h2>
-                  <div className="bg-gray-50 rounded-xl p-4 space-y-1.5">
-                    {auditData.byRoomType.map((rt: RevenueByRoomType) => (
-                      <div key={rt.room_type} className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">{rt.room_type}</span>
-                        <span className="text-sm text-gray-800">
-                          <span className="font-semibold">{fmtCurrency(rt.total)}</span>
-                          <span className="text-gray-400 ml-1">({rt.order_count}{t('finance.rooms')})</span>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Revenue by Payment Method */}
-              {auditData.byMethod.length > 0 && (
-                <div>
-                  <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5 mb-3">
-                    <span className="w-5 h-5 rounded bg-purple-50 flex items-center justify-center text-purple-600 text-xs">$</span>
-                    {t('finance.byPaymentMethod')}
-                  </h2>
-                  <div className="bg-gray-50 rounded-xl p-4 space-y-1.5">
-                    {auditData.byMethod.map((m) => {
-                      const pct = auditData.summary.total > 0
-                        ? ((m.total / auditData.summary.total) * 100).toFixed(1)
-                        : '0.0'
-                      return (
-                        <div key={m.payment_method} className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2.5 h-2.5 rounded-full" style={{ background: METHOD_COLORS[m.payment_method] || '#9CA3AF' }} />
-                            <span className="text-sm text-gray-600">{METHOD_LABEL[m.payment_method] || m.payment_method}</span>
-                          </div>
-                          <span className="text-sm text-gray-800">
-                            <span className="font-semibold">{fmtCurrency(m.total)}</span>
-                            <span className="text-gray-400 ml-1">({pct}%)</span>
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Occupancy */}
-              <div>
-                <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5 mb-3">
-                  <span className="w-5 h-5 rounded bg-amber-50 flex items-center justify-center text-amber-600 text-xs">%</span>
-                  {t('finance.occupancy')}
-                </h2>
-                <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">{t('finance.todayOccupancy')}</span>
-                    <span className="text-sm font-semibold text-gray-900">
-                      {auditData.occupancy.totalRooms > 0
-                        ? `${((auditData.occupancy.occupiedRooms / auditData.occupancy.totalRooms) * 100).toFixed(0)}%`
-                        : '0%'
-                      }
-                      <span className="text-gray-400 font-normal ml-1">
-                        ({auditData.occupancy.occupiedRooms}/{auditData.occupancy.totalRooms}{t('finance.rooms')})
-                      </span>
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">{t('finance.vacantRooms')}</span>
-                    <span className="text-sm font-semibold text-gray-900">{auditData.occupancy.vacantRooms}{t('finance.rooms')}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-gray-100">
-              <button
-                onClick={handlePrintAudit}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m0 0a48.159 48.159 0 018.5 0m-8.5 0V5.625a2.25 2.25 0 012.25-2.25h4.5a2.25 2.25 0 012.25 2.25v1.613" />
-                </svg>
-                {t('finance.printReport')}
-              </button>
-              <button
-                onClick={handleExportAudit}
-                disabled={auditExporting}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-40 transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                </svg>
-                {auditExporting ? t('finance.exporting') : t('finance.export')}
-              </button>
-              <button
-                onClick={() => setShowNightAuditReport(false)}
-                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                {t('common.close')}
-              </button>
-            </div>
-          </div>
-        )}
-      </Dialog>
+      />
+      {AlertComponent}
+      {ConfirmComponent}
     </div>
   )
-}
-
-function formatTime(iso: string) {
-  if (!iso) return '-'
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return iso
-  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
-
-function typeBadgeClass(type: string) {
-  switch (type) {
-    case 'ROOM_FEE': return 'bg-green-50 text-green-700'
-    case 'DEPOSIT':  return 'bg-blue-50 text-blue-700'
-    case 'INCIDENTAL': return 'bg-amber-50 text-amber-700'
-    default: return 'bg-gray-100 text-gray-600'
-  }
-}
-
-function fmtCurrency(n: number) {
-  return `¥${n.toLocaleString('zh-CN', { minimumFractionDigits: 0 })}`
 }

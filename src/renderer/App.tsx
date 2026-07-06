@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Card, Button, Input, Select, RoomTypeManager } from './components'
+import { RoomTypeManager, ErrorBoundary, useDialogs } from './components'
 import RoomMatrix from './features/room-matrix/RoomMatrix'
+import RoomsPage from './features/rooms/RoomsPage'
 import CheckInDialog from './features/room-matrix/CheckInDialog'
 import OrderDetailDialog from './features/room-matrix/OrderDetailDialog'
 import OrdersPage from './features/orders/OrdersPage'
@@ -12,14 +13,19 @@ import PricingPage from './features/pricing/PricingPage'
 import GuestsPage from './features/guests/GuestsPage'
 import InvoicesPage from './features/invoices/InvoicesPage'
 import RoomStatusOverview from './features/room-matrix/RoomStatusOverview'
+import TrialExpiredPage from './features/trial/TrialExpiredPage'
+import ActivationDialog from './features/trial/ActivationDialog'
+import { useEdition } from './hooks/useEdition'
 import type { Room, RoomType, Order } from '../shared/types'
+import type { FeatureKey } from '../shared/editions'
 
 type Page = 'dashboard' | 'rooms' | 'orders' | 'overview' | 'finance' | 'analytics' | 'pricing' | 'backup' | 'guests' | 'invoices'
 
-const navItems: { id: Page; labelKey: string; icon: JSX.Element }[] = [
+const allNavItems: { id: Page; labelKey: string; icon: JSX.Element; feature: FeatureKey }[] = [
   {
     id: 'dashboard',
     labelKey: 'nav.matrix',
+    feature: 'page.roomMatrix',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25a2.25 2.25 0 01-2.25-2.25v-2.25z" />
@@ -29,6 +35,7 @@ const navItems: { id: Page; labelKey: string; icon: JSX.Element }[] = [
   {
     id: 'rooms',
     labelKey: 'nav.rooms',
+    feature: 'page.roomManagement',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18 0h-18M2.25 9l4.5-1.636M18.75 3l-1.5.545m0 6.205l3 1m1.5.5l-1.5-.5M6.75 7.364V3h-3v18m3-13.636l10.5-3.819" />
@@ -38,6 +45,7 @@ const navItems: { id: Page; labelKey: string; icon: JSX.Element }[] = [
   {
     id: 'orders',
     labelKey: 'nav.orders',
+    feature: 'page.orders',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
@@ -47,6 +55,7 @@ const navItems: { id: Page; labelKey: string; icon: JSX.Element }[] = [
   {
     id: 'overview',
     labelKey: 'nav.overview',
+    feature: 'page.overview',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25a2.25 2.25 0 01-2.25-2.25v-2.25z" />
@@ -56,6 +65,7 @@ const navItems: { id: Page; labelKey: string; icon: JSX.Element }[] = [
   {
     id: 'finance',
     labelKey: 'nav.finance',
+    feature: 'page.finance',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
@@ -65,6 +75,7 @@ const navItems: { id: Page; labelKey: string; icon: JSX.Element }[] = [
   {
     id: 'analytics',
     labelKey: 'nav.analytics',
+    feature: 'page.analytics',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
@@ -74,6 +85,7 @@ const navItems: { id: Page; labelKey: string; icon: JSX.Element }[] = [
   {
     id: 'pricing',
     labelKey: 'nav.pricing',
+    feature: 'page.pricing',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -83,6 +95,7 @@ const navItems: { id: Page; labelKey: string; icon: JSX.Element }[] = [
   {
     id: 'backup',
     labelKey: 'nav.backup',
+    feature: 'page.backup',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
@@ -92,6 +105,7 @@ const navItems: { id: Page; labelKey: string; icon: JSX.Element }[] = [
   {
     id: 'guests',
     labelKey: 'nav.guests',
+    feature: 'page.guests',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
@@ -101,6 +115,7 @@ const navItems: { id: Page; labelKey: string; icon: JSX.Element }[] = [
   {
     id: 'invoices',
     labelKey: 'nav.invoices',
+    feature: 'page.invoices',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
@@ -136,11 +151,21 @@ function WindowControls() {
 
 export default function App() {
   const { t, i18n } = useTranslation()
+  const { info: editionInfo, loading: editionLoading, hasFeature } = useEdition()
   const [page, setPage] = useState<Page>('dashboard')
   const [rooms, setRooms] = useState<Room[]>([])
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
   const [dbStatus, setDbStatus] = useState<'idle' | 'ok' | 'error'>('idle')
   const [showTypeManager, setShowTypeManager] = useState(false)
+  const [showActivation, setShowActivation] = useState(false)
+
+  // Filter navigation items based on edition
+  const navItems = useMemo(() => {
+    return allNavItems.filter(item => hasFeature(item.feature))
+  }, [hasFeature])
+
+  // Check if trial is expired
+  const isTrialExpired = editionInfo.edition === 'trial' && editionInfo.trialExpired
 
   // Check-in dialog state
   const [checkInRoom, setCheckInRoom] = useState<Room | null>(null)
@@ -161,6 +186,8 @@ export default function App() {
   const [roomType, setRoomType] = useState('')
   const [roomPrice, setRoomPrice] = useState('200')
   const [formError, setFormError] = useState('')
+
+  const { showAlert: appShowAlert, AlertComponent: appAlertComp } = useDialogs()
 
   const loadRooms = async () => {
     try {
@@ -205,8 +232,8 @@ export default function App() {
     [orders, todayStr]
   )
 
-  const hasReminders = todayCheckIns > 0 || tomorrowCheckOuts > 0 || overdueOrders > 0
-  const showReminders = hasReminders && (page === 'dashboard' || page === 'rooms')
+  // Always show reminders when on dashboard or rooms page
+  const showReminders = page === 'dashboard' || page === 'rooms'
 
   const handleReminderClick = (filter: string, checkInDate?: string) => {
     setOrderFilter(filter)
@@ -231,6 +258,23 @@ export default function App() {
     } catch (e: any) {
       setFormError(e?.message?.includes('UNIQUE') ? t('roomsPage.roomExists', { roomNumber: roomNumber.trim() }) : t('roomsPage.insertFailed'))
     }
+  }
+
+  // Show loading screen while edition info is loading
+  if (editionLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">{t('common.loading')}</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show trial expired page if trial is expired
+  if (isTrialExpired) {
+    return <TrialExpiredPage />
   }
 
   return (
@@ -286,6 +330,21 @@ export default function App() {
               <span className={`inline-block w-2 h-2 rounded-full ${dbStatus === 'ok' ? 'bg-green-400' : dbStatus === 'error' ? 'bg-red-400' : 'bg-gray-300'}`} />
               {dbStatus === 'ok' ? t('nav.dbConnected') : dbStatus === 'error' ? t('nav.dbFailed') : t('nav.dbConnecting')}
             </div>
+            <div
+              className="flex items-center gap-2 px-3 py-1 text-xs text-gray-400 cursor-pointer hover:text-gray-600 hover:bg-gray-50 rounded transition-colors"
+              onClick={() => setShowActivation(true)}
+              title={t('activation.clickToActivate')}
+            >
+              <span className={`inline-block w-2 h-2 rounded-full ${
+                editionInfo.edition === 'ultimate' ? 'bg-yellow-400' :
+                editionInfo.edition === 'pro' ? 'bg-blue-400' :
+                editionInfo.edition === 'basic' ? 'bg-green-400' : 'bg-gray-400'
+              }`} />
+              {t(`editions.${editionInfo.edition}`)}
+              {editionInfo.edition === 'trial' && editionInfo.trialDaysRemaining !== null && (
+                <span className="text-gray-500">({t('trial.daysRemaining', { days: editionInfo.trialDaysRemaining })})</span>
+              )}
+            </div>
           </div>
         </aside>
 
@@ -294,39 +353,52 @@ export default function App() {
           {/* Reminder banner */}
           {showReminders && (
             <div className="px-6 pt-4 flex flex-wrap gap-2">
-              {todayCheckIns > 0 && (
-                <button
-                  onClick={() => handleReminderClick('PREBOOK', todayStr)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-sm font-medium hover:bg-blue-100 transition-colors cursor-pointer"
-                >
-                  <span className="text-base">📥</span>
-                  <span>{t('reminders.todayCheckIns')}</span>
-                  <span className="text-xs font-bold bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center">{todayCheckIns}</span>
-                </button>
-              )}
-              {tomorrowCheckOuts > 0 && (
-                <button
-                  onClick={() => handleReminderClick('IN_HOUSE')}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm font-medium hover:bg-yellow-100 transition-colors cursor-pointer"
-                >
-                  <span className="text-base">📤</span>
-                  <span>{t('reminders.tomorrowCheckOuts')}</span>
-                  <span className="text-xs font-bold bg-yellow-500 text-white rounded-full w-5 h-5 flex items-center justify-center">{tomorrowCheckOuts}</span>
-                </button>
-              )}
-              {overdueOrders > 0 && (
-                <button
-                  onClick={() => handleReminderClick('IN_HOUSE')}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm font-medium hover:bg-red-100 transition-colors cursor-pointer"
-                >
-                  <span className="text-base">⏰</span>
-                  <span>{t('reminders.overdueOrders')}</span>
-                  <span className="text-xs font-bold bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center">{overdueOrders}</span>
-                </button>
-              )}
+              <button
+                onClick={() => handleReminderClick('PREBOOK', todayStr)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors cursor-pointer ${
+                  todayCheckIns > 0
+                    ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
+                }`}
+              >
+                <span className="text-base">📥</span>
+                <span>{t('reminders.todayCheckIns')}</span>
+                <span className={`text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ${
+                  todayCheckIns > 0 ? 'bg-blue-600 text-white' : 'bg-gray-400 text-white'
+                }`}>{todayCheckIns}</span>
+              </button>
+              <button
+                onClick={() => handleReminderClick('IN_HOUSE')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors cursor-pointer ${
+                  tomorrowCheckOuts > 0
+                    ? 'bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100'
+                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
+                }`}
+              >
+                <span className="text-base">📤</span>
+                <span>{t('reminders.tomorrowCheckOuts')}</span>
+                <span className={`text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ${
+                  tomorrowCheckOuts > 0 ? 'bg-yellow-500 text-white' : 'bg-gray-400 text-white'
+                }`}>{tomorrowCheckOuts}</span>
+              </button>
+              <button
+                onClick={() => handleReminderClick('IN_HOUSE')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors cursor-pointer ${
+                  overdueOrders > 0
+                    ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
+                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
+                }`}
+              >
+                <span className="text-base">⏰</span>
+                <span>{t('reminders.overdueOrders')}</span>
+                <span className={`text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ${
+                  overdueOrders > 0 ? 'bg-red-600 text-white' : 'bg-gray-400 text-white'
+                }`}>{overdueOrders}</span>
+              </button>
             </div>
           )}
 
+          <ErrorBoundary>
           {page === 'dashboard' && (
             <div className="p-6 h-full">
               <RoomMatrix key={refreshKey}
@@ -355,7 +427,7 @@ export default function App() {
                     await window.electron.db.deleteRoom(roomId)
                     await loadRooms()
                   } catch (e: any) {
-                    alert(e?.message || t('roomsPage.deleteFailed'))
+                    appShowAlert({ message: e?.message || t('roomsPage.deleteFailed'), variant: 'error' })
                   }
                 }}
                 onUpdateRoom={async (roomId, updates) => {
@@ -363,7 +435,7 @@ export default function App() {
                     await window.electron.db.updateRoom(roomId, updates)
                     await loadRooms()
                   } catch (e: any) {
-                    alert(e?.message || t('roomsPage.updateFailed'))
+                    appShowAlert({ message: e?.message || t('roomsPage.updateFailed'), variant: 'error' })
                   }
                 }}
               />
@@ -411,6 +483,7 @@ export default function App() {
           {page === 'invoices' && (
             <InvoicesPage refreshKey={refreshKey} />
           )}
+          </ErrorBoundary>
         </main>
       </div>
 
@@ -430,132 +503,11 @@ export default function App() {
         onSaved={() => { setSelectedOrder(null); setSelectedOrderRoom(null); setRefreshKey(k => k + 1) }}
         onDeleted={() => { setSelectedOrder(null); setSelectedOrderRoom(null); setRefreshKey(k => k + 1) }}
       />
-    </div>
-  )
-}
-
-/* --- Room Management Page --- */
-function RoomsPage({
-  rooms, roomTypes, roomNumber, setRoomNumber, roomType, setRoomType,
-  roomPrice, setRoomPrice, onInsertRoom, formError, setFormError, onOpenTypeManager, onDeleteRoom, onUpdateRoom,
-}: {
-  rooms: Room[]; roomTypes: RoomType[]
-  roomNumber: string; setRoomNumber: (v: string) => void
-  roomType: string; setRoomType: (v: string) => void
-  roomPrice: string; setRoomPrice: (v: string) => void
-  onInsertRoom: () => void; formError: string; setFormError: (v: string) => void
-  onOpenTypeManager: () => void
-  onDeleteRoom: (roomId: number) => void
-  onUpdateRoom: (roomId: number, updates: Partial<Pick<Room, 'room_type' | 'base_price'>>) => void
-}) {
-  const { t } = useTranslation()
-  const [editingId, setEditingId] = useState<number | null>(null)
-  const [editType, setEditType] = useState('')
-  const [editPrice, setEditPrice] = useState('')
-
-  const startEdit = (r: Room) => {
-    setEditingId(r.room_id)
-    setEditType(r.room_type)
-    setEditPrice(String(r.base_price))
-  }
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">{t('roomsPage.title')}</h1>
-        <p className="mt-1 text-sm text-gray-500">{t('roomsPage.subtitle')}</p>
-      </div>
-
-      <Card>
-        <h2 className="text-base font-semibold text-gray-900 mb-4">{t('roomsPage.addRoom')}</h2>
-        {roomTypes.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-sm text-gray-500 mb-3">{t('roomsPage.configureTypeFirst')}</p>
-            <Button onClick={onOpenTypeManager}>{t('roomsPage.goConfigure')}</Button>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-end gap-3 mb-2">
-              <div className="w-32">
-                <Input label={t('roomsPage.roomNumber')} id="room-number" value={roomNumber} onChange={(e) => { setRoomNumber(e.target.value); setFormError('') }} />
-              </div>
-              <div className="w-40">
-                <Select label={t('roomsPage.roomType')} id="room-type" value={roomType} onChange={(e) => setRoomType(e.target.value)}>
-                  {roomTypes.map((t) => <option key={t.type_id} value={t.type_name}>{t.type_name}</option>)}
-                </Select>
-              </div>
-              <div className="w-32">
-                <Input label={t('roomsPage.basePrice')} id="base-price" type="number" value={roomPrice} onChange={(e) => setRoomPrice(e.target.value)} />
-              </div>
-              <Button onClick={onInsertRoom}>{t('roomsPage.addRoomButton')}</Button>
-            </div>
-            {formError && <p className="text-sm text-red-600 mb-4">{formError}</p>}
-          </>
-        )}
-
-        {rooms.length > 0 ? (
-          <div className="border border-gray-200 rounded-lg overflow-hidden mt-4">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600">
-                <tr>
-                  <th className="text-left px-4 py-2.5 font-medium">{t('roomsPage.roomNumber')}</th>
-                  <th className="text-left px-4 py-2.5 font-medium">{t('roomsPage.roomType')}</th>
-                  <th className="text-right px-4 py-2.5 font-medium">{t('roomsPage.basePrice')}</th>
-                  <th className="text-right px-4 py-2.5 font-medium">{t('roomsPage.operations')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {rooms.map((r) => (
-                  editingId === r.room_id ? (
-                    <tr key={r.room_id} className="bg-primary-50/30">
-                      <td className="px-4 py-2.5 font-medium text-gray-900">{r.room_number}</td>
-                      <td className="px-4 py-2.5">
-                        <Select value={editType} onChange={e => setEditType(e.target.value)}>
-                          {roomTypes.map(t => <option key={t.type_id} value={t.type_name}>{t.type_name}</option>)}
-                        </Select>
-                      </td>
-                      <td className="px-4 py-2.5 text-right">
-                        <Input type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)} />
-                      </td>
-                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                        <button onClick={() => { onUpdateRoom(r.room_id, { room_type: editType, base_price: Number(editPrice) }); setEditingId(null) }}
-                          className="px-2 py-1 text-xs font-medium bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors">
-                          {t('roomsPage.save')}
-                        </button>
-                        <button onClick={() => setEditingId(null)}
-                          className="ml-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 transition-colors">
-                          {t('roomsPage.cancel')}
-                        </button>
-                      </td>
-                    </tr>
-                  ) : (
-                    <tr key={r.room_id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-2.5 font-medium text-gray-900">{r.room_number}</td>
-                      <td className="px-4 py-2.5 text-gray-600">{r.room_type}</td>
-                      <td className="px-4 py-2.5 text-right text-gray-900">¥{r.base_price.toFixed(0)}</td>
-                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                        <button onClick={() => startEdit(r)} className="p-1 rounded text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors" title={t('common.edit')}>
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
-                          </svg>
-                        </button>
-                        <button onClick={() => { if (confirm(t('roomsPage.deleteConfirm', { roomNumber: r.room_number }))) onDeleteRoom(r.room_id) }}
-                          className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors" title={t('common.delete')}>
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                          </svg>
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : roomTypes.length > 0 ? (
-          <div className="text-center py-8 text-gray-400 text-sm mt-4">{t('roomsPage.noRooms')}</div>
-        ) : null}
-      </Card>
+      <ActivationDialog
+        open={showActivation}
+        onClose={() => setShowActivation(false)}
+      />
+      {appAlertComp}
     </div>
   )
 }

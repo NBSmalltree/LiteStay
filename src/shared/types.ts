@@ -268,19 +268,19 @@ export interface ElectronAPI {
     onOrdersChanged(callback: () => void): void
   }
   db: {
-    getRoomTypes(): RoomType[]
-    insertRoomType(name: string): RoomType
-    deleteRoomType(typeId: number): boolean
-    insertRoom(room: Pick<Room, 'room_number' | 'room_type' | 'base_price'>): Room
-    getRooms(): Room[]
+    getRoomTypes(): Promise<RoomType[]>
+    insertRoomType(name: string): Promise<RoomType>
+    deleteRoomType(typeId: number): Promise<boolean>
+    insertRoom(room: Pick<Room, 'room_number' | 'room_type' | 'base_price'>): Promise<Room>
+    getRooms(): Promise<Room[]>
     deleteRoom(roomId: number): Promise<boolean>
     updateRoom(roomId: number, updates: Partial<Pick<Room, 'room_type' | 'base_price'>>): Promise<Room>
-    insertOrder(order: Omit<Order, 'order_id'>): Order
-    getOrders(): Order[]
-    updateOrder(orderId: number, updates: Partial<Omit<Order, 'order_id'>>): Order
-    deleteOrder(orderId: number): boolean
-    insertFinancialLog(log: Omit<FinancialLog, 'log_id' | 'created_at'>): FinancialLog
-    getFinancialLogs(date?: string): FinancialLog[]
+    insertOrder(order: Omit<Order, 'order_id'>): Promise<Order>
+    getOrders(): Promise<Order[]>
+    updateOrder(orderId: number, updates: Partial<Omit<Order, 'order_id'>>): Promise<Order>
+    deleteOrder(orderId: number): Promise<boolean>
+    insertFinancialLog(log: Omit<FinancialLog, 'log_id' | 'created_at'>): Promise<FinancialLog>
+    getFinancialLogs(date?: string): Promise<FinancialLog[]>
     getFinancialLogsByOrder(orderId: number): Promise<FinancialLog[]>
     updateFinancialLogPayment(orderId: number, paymentMethod: string): Promise<boolean>
     updateFinancialLogAmount(orderId: number, type: string, amount: number): Promise<boolean>
@@ -307,16 +307,16 @@ export interface ElectronAPI {
     updatePriceRule(ruleId: number, updates: Partial<Omit<PriceRule, 'rule_id' | 'created_at'>>): Promise<PriceRule>
     deletePriceRule(ruleId: number): Promise<boolean>
     getPriceCalendar(roomType: string, dateFrom: string, dateTo: string): Promise<PriceCalendar[]>
-    getGuests(): Guest[]
+    getGuests(): Promise<Guest[]>
     getGuestById(guestId: number): Promise<Guest | undefined>
     getGuestByPhone(phone: string): Promise<Guest | undefined>
-    insertGuest(guest: Pick<Guest, 'name'> & Partial<Pick<Guest, 'phone' | 'id_card' | 'email' | 'notes'>>): Guest
-    updateGuest(guestId: number, updates: Partial<Pick<Guest, 'name' | 'phone' | 'id_card' | 'email' | 'notes'>>): Guest
-    deleteGuest(guestId: number): boolean
+    insertGuest(guest: Pick<Guest, 'name'> & Partial<Pick<Guest, 'phone' | 'id_card' | 'email' | 'notes'>>): Promise<Guest>
+    updateGuest(guestId: number, updates: Partial<Pick<Guest, 'name' | 'phone' | 'id_card' | 'email' | 'notes'>>): Promise<Guest>
+    deleteGuest(guestId: number): Promise<{ error: string } | true>
     findOrCreateGuest(guestData: {name: string; phone?: string; id_card?: string; email?: string; notes?: string}): Promise<Guest>
-    getGuestsWithStats(): GuestWithStats[]
-    searchGuests(query: string): Guest[]
-    getGuestOrders(guestName: string): GuestOrder[]
+    getGuestsWithStats(): Promise<GuestWithStats[]>
+    searchGuests(query: string): Promise<Guest[]>
+    getGuestOrders(guestName: string): Promise<GuestOrder[]>
     getMonthlyRevenue(year: number): Promise<MonthlyRevenue[]>
     getQuarterlyRevenue(year: number): Promise<QuarterlyRevenue[]>
     getYearlyRevenue(): Promise<YearlyRevenue[]>
@@ -335,6 +335,11 @@ export interface ElectronAPI {
     markInvoiceIssued(invoiceId: number): Promise<Invoice>
     exportInvoiceList(status: string): Promise<string | null>
   }
+  edition: {
+    getInfo(): Promise<EditionInfo>
+    checkTrial(): Promise<{ expired: boolean; clockRollback: boolean }>
+    activate(licenseKey: string): Promise<{ success: boolean; edition: Edition; error?: string }>
+  }
 }
 
 declare global {
@@ -342,3 +347,6 @@ declare global {
     electron: ElectronAPI
   }
 }
+
+// Import and re-export edition types
+export type { Edition, EditionInfo } from './editions'
