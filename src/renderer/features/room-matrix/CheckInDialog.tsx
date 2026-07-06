@@ -29,7 +29,7 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
   const [checkOut, setCheckOut] = useState('')
   const [actualAmount, setActualAmount] = useState('')
   const [deposit, setDeposit] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState('WeChat')
+  const [paymentMethod, setPaymentMethod] = useState<'WeChat' | 'Alipay' | 'Cash'>('WeChat')
   const [source, setSource] = useState('direct')
   const [notes, setNotes] = useState('')
   const [error, setError] = useState('')
@@ -162,7 +162,7 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
         order_id: order.order_id,
         type: 'ROOM_FEE',
         amount: Number(actualAmount),
-        payment_method: paymentMethod as any,
+        payment_method: paymentMethod,
       })
 
       if (Number(deposit) > 0) {
@@ -170,7 +170,7 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
           order_id: order.order_id,
           type: 'DEPOSIT',
           amount: Number(deposit),
-          payment_method: paymentMethod as any,
+          payment_method: paymentMethod,
         })
       }
 

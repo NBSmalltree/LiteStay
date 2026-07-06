@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { fmtDate } from '../../utils'
 import type { Room, Order } from '../../../shared/types'
 
 const DAYS_SHOWN = 14
@@ -10,10 +11,6 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; labelKey: string
   IN_HOUSE: { bg: 'bg-red-500', text: 'text-white', labelKey: 'roomMatrix.inHouse' },
   PREBOOK: { bg: 'bg-blue-500', text: 'text-white', labelKey: 'roomMatrix.prebook' },
   CHECKED_OUT: { bg: 'bg-gray-400', text: 'text-white', labelKey: 'roomMatrix.checkedOut' },
-}
-
-function fmtDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function addDays(d: Date, n: number): Date {
@@ -43,8 +40,12 @@ export default function RoomMatrix({ onCellClick, onOrderClick }: {
   const rangeEnd = useMemo(() => fmtDate(dates[dates.length - 1]), [dates])
 
   const fetchOrders = () => window.electron.db.getOrders().then(setOrders)
-  useEffect(() => { window.electron.db.getRooms().then(setRooms) }, [])
-  useEffect(() => { fetchOrders() }, [])
+  useEffect(() => {
+    Promise.all([
+      window.electron.db.getRooms().then(setRooms),
+      fetchOrders(),
+    ])
+  }, [])
   useEffect(() => {
     window.electron.win.onOrdersChanged(() => fetchOrders())
   }, [])
