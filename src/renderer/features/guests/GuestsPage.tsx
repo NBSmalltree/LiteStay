@@ -1,16 +1,15 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Card, Button, Input, Select, Dialog } from '../../components'
-import type { GuestWithStats, Guest, GuestOrder } from '../../../shared/types'
+import { Card, Button, Input, Select } from '../../components'
+import { useEdition } from '../../hooks/useEdition'
+import { useDialogs } from '../../components/useDialogs'
+import UpgradeBadge from '../../components/UpgradeBadge'
+import GuestDetailDialog from './GuestDetailDialog'
+import GuestFormDialog from './GuestFormDialog'
+import type { GuestWithStats, Guest } from '../../../shared/types'
 
 interface Props {
   refreshKey: number
-}
-
-const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
-  IN_HOUSE: { bg: 'bg-red-100', text: 'text-red-700' },
-  PREBOOK: { bg: 'bg-blue-100', text: 'text-blue-700' },
-  CHECKED_OUT: { bg: 'bg-gray-100', text: 'text-gray-600' },
 }
 
 type SortField = 'name' | 'order_count' | 'total_spent' | 'last_check_in'
@@ -18,7 +17,10 @@ type SortDir = 'asc' | 'desc'
 
 export default function GuestsPage({ refreshKey }: Props) {
   const { t } = useTranslation()
+  const { hasFeature } = useEdition()
+  const { showAlert, showConfirm, AlertComponent, ConfirmComponent } = useDialogs()
   const [guests, setGuests] = useState<GuestWithStats[]>([])
+  const [pendingDelete, setPendingDelete] = useState<{ id: number; name: string } | null>(null)
   const [search, setSearch] = useState('')
   const [sortField, setSortField] = useState<SortField>('name')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
@@ -28,6 +30,26 @@ export default function GuestsPage({ refreshKey }: Props) {
   const [showForm, setShowForm] = useState(false)
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null)
   const [localKey, setLocalKey] = useState(0)
+
+  // Confirm delete dialog
+  useEffect(() => {
+    if (!pendingDelete) return
+    const { id, name } = pendingDelete
+    showConfirm({
+      title: t('common.confirm'),
+      message: t('guests.confirmDelete', { name }),
+      variant: 'danger',
+      onConfirm: async () => {
+        const result = await window.electron.db.deleteGuest(id)
+        if (result !== true && result.error) {
+          showAlert({ message: t('guests.hasRelatedOrders'), variant: 'error' })
+          return
+        }
+        setLocalKey(k => k + 1)
+      },
+    })
+    setPendingDelete(null)
+  }, [pendingDelete])
 
   // Load guests
   useEffect(() => {
@@ -102,14 +124,8 @@ export default function GuestsPage({ refreshKey }: Props) {
     setShowDetail(true)
   }
 
-  const handleDelete = async (guestId: number, name: string) => {
-    if (!confirm(t('guests.confirmDelete', { name }))) return
-    const result = await window.electron.db.deleteGuest(guestId)
-    if (result && result.error) {
-      alert(t('guests.hasRelatedOrders'))
-      return
-    }
-    setLocalKey(k => k + 1)
+  const handleDeleteClick = (guestId: number, name: string) => {
+    setPendingDelete({ id: guestId, name })
   }
 
   const handleEditFromDetail = () => {
@@ -170,14 +186,18 @@ export default function GuestsPage({ refreshKey }: Props) {
           <div className="text-sm text-gray-500">{t('guests.newThisMonth')}</div>
           <div className="text-2xl font-bold text-blue-600 mt-1">{stats.newThisMonth}</div>
         </Card>
-        <Card padding="sm">
-          <div className="text-sm text-gray-500">{t('guests.returningGuests')}</div>
-          <div className="text-2xl font-bold text-green-600 mt-1">{stats.returning}</div>
-        </Card>
-        <Card padding="sm">
-          <div className="text-sm text-gray-500">{t('guests.returnRate')}</div>
-          <div className="text-2xl font-bold text-amber-600 mt-1">{stats.returnRate}%</div>
-        </Card>
+        {hasFeature('guest.consumptionStats') && (
+          <>
+            <Card padding="sm">
+              <div className="text-sm text-gray-500">{t('guests.returningGuests')}</div>
+              <div className="text-2xl font-bold text-green-600 mt-1">{stats.returning}</div>
+            </Card>
+            <Card padding="sm">
+              <div className="text-sm text-gray-500">{t('guests.returnRate')}</div>
+              <div className="text-2xl font-bold text-amber-600 mt-1">{stats.returnRate}%</div>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Search */}
@@ -220,16 +240,22 @@ export default function GuestsPage({ refreshKey }: Props) {
                   <div className="flex items-center gap-1">{t('guests.name')} <SortIcon field="name" /></div>
                 </th>
                 <th className="text-left px-4 py-3 font-medium">{t('guests.phone')}</th>
-                <th className="text-center px-4 py-3 font-medium cursor-pointer select-none hover:text-gray-900" onClick={() => handleSort('order_count')}>
-                  <div className="flex items-center justify-center gap-1">{t('guests.orderCount')} <SortIcon field="order_count" /></div>
-                </th>
-                <th className="text-right px-4 py-3 font-medium cursor-pointer select-none hover:text-gray-900" onClick={() => handleSort('total_spent')}>
-                  <div className="flex items-center justify-end gap-1">{t('guests.totalSpent')} <SortIcon field="total_spent" /></div>
-                </th>
-                <th className="text-left px-4 py-3 font-medium cursor-pointer select-none hover:text-gray-900" onClick={() => handleSort('last_check_in')}>
-                  <div className="flex items-center gap-1">{t('guests.lastCheckIn')} <SortIcon field="last_check_in" /></div>
-                </th>
-                <th className="text-left px-4 py-3 font-medium">{t('guests.preferredRoomType')}</th>
+                {hasFeature('guest.sort') && (
+                  <>
+                    <th className="text-center px-4 py-3 font-medium cursor-pointer select-none hover:text-gray-900" onClick={() => handleSort('order_count')}>
+                      <div className="flex items-center justify-center gap-1">{t('guests.orderCount')} <SortIcon field="order_count" /></div>
+                    </th>
+                    <th className="text-right px-4 py-3 font-medium cursor-pointer select-none hover:text-gray-900" onClick={() => handleSort('total_spent')}>
+                      <div className="flex items-center justify-end gap-1">{t('guests.totalSpent')} <SortIcon field="total_spent" /></div>
+                    </th>
+                    <th className="text-left px-4 py-3 font-medium cursor-pointer select-none hover:text-gray-900" onClick={() => handleSort('last_check_in')}>
+                      <div className="flex items-center gap-1">{t('guests.lastCheckIn')} <SortIcon field="last_check_in" /></div>
+                    </th>
+                  </>
+                )}
+                {hasFeature('guest.preferredRoomType') && (
+                  <th className="text-left px-4 py-3 font-medium">{t('guests.preferredRoomType')}</th>
+                )}
                 <th className="text-right px-4 py-3 font-medium">{t('guests.actions')}</th>
               </tr>
             </thead>
@@ -238,22 +264,30 @@ export default function GuestsPage({ refreshKey }: Props) {
                 <tr key={guest.guest_id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 font-medium text-gray-900">{guest.name}</td>
                   <td className="px-4 py-3 text-gray-600">{guest.phone || '-'}</td>
-                  <td className="px-4 py-3 text-center text-gray-900">{guest.order_count}</td>
-                  <td className="px-4 py-3 text-right text-gray-900">{guest.total_spent > 0 ? `¥${guest.total_spent.toLocaleString()}` : '-'}</td>
-                  <td className="px-4 py-3 text-gray-600">{guest.last_check_in || '-'}</td>
-                  <td className="px-4 py-3 text-gray-600">{guest.preferred_room_type || '-'}</td>
+                  {hasFeature('guest.sort') && (
+                    <>
+                      <td className="px-4 py-3 text-center text-gray-900">{guest.order_count}</td>
+                      <td className="px-4 py-3 text-right text-gray-900">{guest.total_spent > 0 ? `¥${guest.total_spent.toLocaleString()}` : '-'}</td>
+                      <td className="px-4 py-3 text-gray-600">{guest.last_check_in || '-'}</td>
+                    </>
+                  )}
+                  {hasFeature('guest.preferredRoomType') && (
+                    <td className="px-4 py-3 text-gray-600">{guest.preferred_room_type || '-'}</td>
+                  )}
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => handleViewDetail(guest)}
-                        className="p-1.5 rounded text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
-                        title={t('guests.viewDetail')}
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                      </button>
+                      {hasFeature('guest.historyOrders') && (
+                        <button
+                          onClick={() => handleViewDetail(guest)}
+                          className="p-1.5 rounded text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+                          title={t('guests.viewDetail')}
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </button>
+                      )}
                       <button
                         onClick={() => { setEditingGuest(guest); setShowForm(true) }}
                         className="p-1.5 rounded text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
@@ -264,7 +298,7 @@ export default function GuestsPage({ refreshKey }: Props) {
                         </svg>
                       </button>
                       <button
-                        onClick={() => handleDelete(guest.guest_id, guest.name)}
+                        onClick={() => handleDeleteClick(guest.guest_id, guest.name)}
                         className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                         title={t('common.delete')}
                       >
@@ -288,7 +322,6 @@ export default function GuestsPage({ refreshKey }: Props) {
         orders={guestOrders}
         onClose={() => { setShowDetail(false); setSelectedGuest(null); setGuestOrders([]) }}
         onEdit={handleEditFromDetail}
-        t={t}
       />
 
       {/* Guest Form Dialog */}
@@ -297,262 +330,10 @@ export default function GuestsPage({ refreshKey }: Props) {
         guest={editingGuest}
         onClose={() => { setShowForm(false); setEditingGuest(null) }}
         onSaved={() => { setShowForm(false); setEditingGuest(null); setLocalKey(k => k + 1) }}
-        t={t}
       />
+
+      {AlertComponent}
+      {ConfirmComponent}
     </div>
-  )
-}
-
-/* --- Guest Detail Dialog --- */
-function GuestDetailDialog({
-  open, guest, orders, onClose, onEdit, t,
-}: {
-  open: boolean
-  guest: GuestWithStats | null
-  orders: GuestOrder[]
-  onClose: () => void
-  onEdit: () => void
-  t: (key: string) => string
-}) {
-  if (!guest) return null
-
-  return (
-    <Dialog open={open} onClose={onClose} title={t('guests.guestDetail')} maxWidth="lg">
-      <div className="grid grid-cols-2 gap-6">
-        {/* Left: basic info */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-gray-900 pb-2 border-b border-gray-200">{t('guests.basicInfo')}</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-500">{t('guests.name')}</span>
-              <span className="text-gray-900 font-medium">{guest.name}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">{t('guests.phone')}</span>
-              <span className="text-gray-900">{guest.phone || '-'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">{t('guests.idCard')}</span>
-              <span className="text-gray-900">{guest.id_card || '-'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">{t('guests.email')}</span>
-              <span className="text-gray-900">{guest.email || '-'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">{t('guests.notes')}</span>
-              <span className="text-gray-900">{guest.notes || '-'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">{t('guests.createdAt')}</span>
-              <span className="text-gray-900">{guest.created_at?.slice(0, 10) || '-'}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: stats */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-gray-900 pb-2 border-b border-gray-200">{t('guests.consumptionStats')}</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-500">{t('guests.orderCount')}</span>
-              <span className="text-gray-900 font-medium">{guest.order_count}{t('guests.timesUnit')}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">{t('guests.totalSpent')}</span>
-              <span className="text-gray-900 font-medium text-green-600">
-                {guest.total_spent > 0 ? `¥${guest.total_spent.toLocaleString()}` : '-'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">{t('guests.lastCheckIn')}</span>
-              <span className="text-gray-900">{guest.last_check_in || '-'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">{t('guests.preferredRoomType')}</span>
-              <span className="text-gray-900">{guest.preferred_room_type || '-'}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Order history */}
-      <div className="mt-6">
-        <h3 className="text-sm font-semibold text-gray-900 pb-2 border-b border-gray-200 mb-3">{t('guests.orderHistory')}</h3>
-        {orders.length === 0 ? (
-          <div className="text-center py-6 text-gray-400 text-sm">{t('guests.noOrderHistory')}</div>
-        ) : (
-          <div className="max-h-60 overflow-auto border border-gray-200 rounded-lg">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600 sticky top-0">
-                <tr>
-                  <th className="text-left px-3 py-2 font-medium">{t('guests.roomNumber')}</th>
-                  <th className="text-left px-3 py-2 font-medium">{t('guests.roomType')}</th>
-                  <th className="text-left px-3 py-2 font-medium">{t('guests.checkIn')}</th>
-                  <th className="text-left px-3 py-2 font-medium">{t('guests.checkOut')}</th>
-                  <th className="text-left px-3 py-2 font-medium">{t('guests.status')}</th>
-                  <th className="text-right px-3 py-2 font-medium">{t('guests.roomFee')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {orders.map(order => {
-                  const style = STATUS_STYLES[order.status] || STATUS_STYLES.CHECKED_OUT
-                  return (
-                    <tr key={order.order_id} className="hover:bg-gray-50">
-                      <td className="px-3 py-2 text-gray-900 font-medium">{order.room_number}</td>
-                      <td className="px-3 py-2 text-gray-600">{order.room_type}</td>
-                      <td className="px-3 py-2 text-gray-600">{order.check_in_date}</td>
-                      <td className="px-3 py-2 text-gray-600">{order.check_out_date}</td>
-                      <td className="px-3 py-2">
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${style.bg} ${style.text}`}>
-                          {order.status === 'IN_HOUSE' ? t('guests.statusInHouse') :
-                           order.status === 'PREBOOK' ? t('guests.statusPrebook') :
-                           t('guests.statusCheckedOut')}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-right text-gray-900">¥{order.actual_amount}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div className="flex justify-end gap-3 pt-4">
-        <Button variant="secondary" onClick={onClose}>{t('common.close')}</Button>
-        <Button onClick={onEdit}>{t('guests.editInfo')}</Button>
-      </div>
-    </Dialog>
-  )
-}
-
-/* --- Guest Form Dialog --- */
-function GuestFormDialog({
-  open, guest, onClose, onSaved, t,
-}: {
-  open: boolean
-  guest: Guest | null
-  onClose: () => void
-  onSaved: () => void
-  t: (key: string) => string
-}) {
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [idCard, setIdCard] = useState('')
-  const [email, setEmail] = useState('')
-  const [notes, setNotes] = useState('')
-  const [error, setError] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  const isEdit = !!guest
-
-  useEffect(() => {
-    if (open) {
-      if (guest) {
-        setName(guest.name)
-        setPhone(guest.phone || '')
-        setIdCard(guest.id_card || '')
-        setEmail(guest.email || '')
-        setNotes(guest.notes || '')
-      } else {
-        setName('')
-        setPhone('')
-        setIdCard('')
-        setEmail('')
-        setNotes('')
-      }
-      setError('')
-    }
-  }, [open, guest])
-
-  const handleSave = async () => {
-    setError('')
-    if (!name.trim()) { setError(t('guests.nameRequired')); return }
-
-    setSaving(true)
-    try {
-      if (isEdit && guest) {
-        await window.electron.db.updateGuest(guest.guest_id, {
-          name: name.trim(),
-          phone: phone.trim() || undefined,
-          id_card: idCard.trim() || undefined,
-          email: email.trim() || undefined,
-          notes: notes.trim() || undefined,
-        })
-      } else {
-        await window.electron.db.insertGuest({
-          name: name.trim(),
-          phone: phone.trim() || undefined,
-          id_card: idCard.trim() || undefined,
-          email: email.trim() || undefined,
-          notes: notes.trim() || undefined,
-        })
-      }
-      onSaved()
-    } catch (e: any) {
-      setError(e?.message || t('guests.saveFailed'))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <Dialog open={open} onClose={onClose} title={isEdit ? t('guests.editGuest') : t('guests.addGuest')} maxWidth="sm">
-      <div className="space-y-4">
-        <Input
-          label={t('guests.name')}
-          id="guest-form-name"
-          value={name}
-          onChange={e => { setName(e.target.value); setError('') }}
-          placeholder={t('guests.namePlaceholder')}
-        />
-        <div className="grid grid-cols-2 gap-4">
-          <Input
-            label={t('guests.phone')}
-            id="guest-form-phone"
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-            placeholder={t('guests.optional')}
-          />
-          <Input
-            label={t('guests.idCard')}
-            id="guest-form-idcard"
-            value={idCard}
-            onChange={e => setIdCard(e.target.value)}
-            placeholder={t('guests.optional')}
-          />
-        </div>
-        <Input
-          label={t('guests.email')}
-          id="guest-form-email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          placeholder={t('guests.optional')}
-        />
-        <div className="space-y-1.5">
-          <label htmlFor="guest-form-notes" className="block text-sm font-medium text-gray-700">{t('guests.notes')}</label>
-          <textarea
-            id="guest-form-notes"
-            rows={2}
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            placeholder={t('guests.notesPlaceholder')}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-900
-              placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500
-              focus:border-primary-500 transition-colors resize-none"
-          />
-        </div>
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-
-        <div className="flex justify-end gap-3 pt-2">
-          <Button variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
-          <Button onClick={handleSave} disabled={saving}>{saving ? t('guests.saving') : isEdit ? t('common.save') : t('guests.add')}</Button>
-        </div>
-      </div>
-    </Dialog>
   )
 }
