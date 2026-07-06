@@ -1,12 +1,12 @@
-import type { Edition, EditionInfo } from '../editions'
-import type { RoomType, Room } from './room'
-import type { Order, GuestOrder } from './order'
-import type { FinancialLog, FinancialLogDetailed, FinancialSummary, RevenueByRoomType, OccupancyStats, NightAuditData } from './finance'
-import type { DailyOccupancy, DailyRevenueByType, RoomTypeAnalysis, MonthlyRevenue, QuarterlyRevenue, YearlyRevenue, RevenueGrowth, PaymentMethodTrend, SourceStat, SourceTrend, ADRRevPARData, ADRRevPARTrend, ADRByRoomType } from './analytics'
-import type { PriceRule, PriceCalendar } from './pricing'
-import type { Guest, GuestWithStats } from './guest'
-import type { Invoice, InvoiceWithOrder } from './invoice'
-import type { BackupInfo } from './backup'
+import type { Edition, EditionInfo } from '../src/shared/editions'
+import type { RoomType, Room } from '../src/shared/types/room'
+import type { Order, GuestOrder } from '../src/shared/types/order'
+import type { FinancialLog, FinancialLogDetailed, FinancialSummary, RevenueByRoomType, OccupancyStats, NightAuditData } from '../src/shared/types/finance'
+import type { DailyOccupancy, DailyRevenueByType, RoomTypeAnalysis, MonthlyRevenue, QuarterlyRevenue, YearlyRevenue, RevenueGrowth, PaymentMethodTrend, SourceStat, SourceTrend, ADRRevPARData, ADRRevPARTrend, ADRByRoomType } from '../src/shared/types/analytics'
+import type { PriceRule, PriceCalendar } from '../src/shared/types/pricing'
+import type { Guest, GuestWithStats } from '../src/shared/types/guest'
+import type { Invoice, InvoiceWithOrder } from '../src/shared/types/invoice'
+import type { BackupInfo } from '../src/shared/types/backup'
 
 export interface ElectronAPI {
   getPlatform(): Promise<string>
