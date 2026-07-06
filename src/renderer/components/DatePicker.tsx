@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 interface Props {
@@ -13,6 +13,7 @@ export default function DatePicker({ value, onChange, className = '', min, max }
   const { i18n } = useTranslation()
   const [displayValue, setDisplayValue] = useState(value)
   const [isEditing, setIsEditing] = useState(false)
+  const blurHandledRef = useRef(false)
 
   // Format date based on language
   const formatDateForDisplay = useCallback((dateStr: string): string => {
@@ -48,8 +49,13 @@ export default function DatePicker({ value, onChange, className = '', min, max }
     return displayStr
   }, [])
 
-  // Update display value when prop changes
+  // Update display value when prop changes (not while editing)
   useEffect(() => {
+    // During blur, handleBlur already set the display value — don't overwrite
+    if (blurHandledRef.current) {
+      blurHandledRef.current = false
+      return
+    }
     if (!isEditing) {
       setDisplayValue(formatDateForDisplay(value))
     }
@@ -80,6 +86,7 @@ export default function DatePicker({ value, onChange, className = '', min, max }
     // Re-format on blur to ensure consistency
     const isoDate = parseDisplayDate(displayValue)
     if (isoDate) {
+      blurHandledRef.current = true
       setDisplayValue(formatDateForDisplay(isoDate))
       onChange(isoDate)
     }
@@ -102,7 +109,7 @@ export default function DatePicker({ value, onChange, className = '', min, max }
     const container = document.querySelector(`[data-date-picker="${value}"]`)
     if (container) {
       const input = container.querySelector('input[type="date"]') as HTMLInputElement
-      if (input) {
+      if (input && typeof input.showPicker === 'function') {
         input.showPicker()
       }
     }
