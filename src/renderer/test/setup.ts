@@ -1,4 +1,6 @@
 import '@testing-library/jest-dom'
+import { beforeEach } from 'vitest'
+
 
 // Mock i18next — returns translation key as fallback
 vi.mock('react-i18next', () => ({
@@ -19,14 +21,22 @@ vi.mock('react-i18next', () => ({
   })),
 }))
 
-// Mock global window.electron — Proxy auto-creates vi.fn() for any unlisted method
-const mockDb = new Proxy({}, { get: () => vi.fn() })
+// Mock global window.electron — db methods cache mock instances and resolve to [] by default
+const autoMock = (val = []) => vi.fn(() => Promise.resolve(val))
+const mockCache: Record<string, any> = {}
+const mockDb = new Proxy({}, {
+  get(_target, prop) {
+    if (typeof prop !== 'string') return undefined
+    if (!mockCache[prop]) mockCache[prop] = autoMock()
+    return mockCache[prop]
+  },
+})
 
 Object.defineProperty(window, 'electron', {
   value: {
     db: mockDb,
     win: { minimize: vi.fn(), maximize: vi.fn(), close: vi.fn(), onMaximized: vi.fn(), onOrdersChanged: vi.fn() },
-    edition: { getInfo: vi.fn(), checkTrial: vi.fn(), activate: vi.fn() },
+    edition: { getInfo: vi.fn(() => Promise.resolve({ edition: 'trial', trialExpired: false, trialDaysRemaining: 30, trialStartDate: null, activatedAt: null })), checkTrial: vi.fn(() => Promise.resolve({ expired: false, clockRollback: false })), activate: autoMock() },
   },
   writable: true,
 })
