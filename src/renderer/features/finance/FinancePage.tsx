@@ -45,8 +45,8 @@ export default function FinancePage({ refreshKey }: { refreshKey: number }) {
 
   useEffect(() => { load() }, [load, refreshKey])
   useEffect(() => {
-    Promise.resolve(window.electron.db.getOrders()).then(setOrders).catch((e: any) => console.error('[FinancePage] orders error:', e))
-    Promise.resolve(window.electron.db.getRooms()).then(setRooms).catch((e: any) => console.error('[FinancePage] rooms error:', e))
+    Promise.resolve(window.electron.db.getOrders()).then(setOrders).catch((e) => console.error('[FinancePage] orders error:', e))
+    Promise.resolve(window.electron.db.getRooms()).then(setRooms).catch((e) => console.error('[FinancePage] rooms error:', e))
   }, [refreshKey])
 
   const handleRange = (r: Range) => { setRange(r); if (r === 'today') { setDateFrom(today()); setDateTo(today()) } else if (r === 'month') { setDateFrom(firstOfMonth()); setDateTo(today()) } }

@@ -158,8 +158,8 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
       await window.electron.db.updateFinancialLogAmount(order.order_id, 'DEPOSIT', Number(deposit))
       onSaved()
       onClose()
-    } catch (e: any) {
-      setError(e?.message || t('orderDetail.validation.saveFailed'))
+    } catch (e) {
+      setError((e as Error)?.message || t('orderDetail.validation.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -183,8 +183,8 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
       await window.electron.db.updateOrder(order.order_id, { status: newStatus as Order['status'] })
       onSaved()
       onClose()
-    } catch (e: any) {
-      setError(e?.message || t('orderDetail.validation.statusUpdateFailed'))
+    } catch (e) {
+      setError((e as Error)?.message || t('orderDetail.validation.statusUpdateFailed'))
     } finally {
       setSaving(false)
     }
@@ -198,8 +198,8 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
       await window.electron.db.deleteOrder(order.order_id)
       onDeleted()
       onClose()
-    } catch (e: any) {
-      setError(e?.message || t('orderDetail.validation.deleteFailed'))
+    } catch (e) {
+      setError((e as Error)?.message || t('orderDetail.validation.deleteFailed'))
     } finally {
       setSaving(false)
     }
@@ -270,8 +270,8 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
       setShowRoomChange(false)
       setTargetRoomId(null)
       onSaved()
-    } catch (e: any) {
-      setError(e?.message || t('orderDetail.validation.roomChangeFailed'))
+    } catch (e) {
+      setError((e as Error)?.message || t('orderDetail.validation.roomChangeFailed'))
     } finally {
       setSaving(false)
     }
@@ -301,8 +301,8 @@ export default function OrderDetailDialog({ open, order, room, onClose, onSaved,
       setInvoiceTaxNumber('')
       setInvoiceType('normal')
       showAlert({ message: t('orderDetail.validation.invoiceSubmitted'), variant: 'success' })
-    } catch (e: any) {
-      showAlert({ message: e?.message || t('orderDetail.validation.invoiceFailed'), variant: 'error' })
+    } catch (e) {
+      showAlert({ message: (e as Error)?.message || t('orderDetail.validation.invoiceFailed'), variant: 'error' })
     } finally {
       setInvoiceSaving(false)
     }

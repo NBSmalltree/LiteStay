@@ -73,7 +73,7 @@ export default function PriceRuleEditor({ open, rule, roomTypes, onClose, onSave
       if (rule) await window.electron.db.updatePriceRule(rule.rule_id, data)
       else await window.electron.db.insertPriceRule(data)
       onSaved()
-    } catch (e: any) { setError(e?.message || t('pricing.saveFailed')) }
+    } catch (e) { setError((e as Error)?.message || t('pricing.saveFailed')) }
     finally { setSaving(false) }
   }
 

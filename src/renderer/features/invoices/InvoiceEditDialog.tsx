@@ -98,8 +98,8 @@ export default function InvoiceEditDialog({ open, invoice, orders, onClose, onSa
         })
       }
       onSaved()
-    } catch (e: any) {
-      setError(e?.message || t('invoices.saveFailed'))
+    } catch (e) {
+      setError((e as Error)?.message || t('invoices.saveFailed'))
     } finally {
       setSaving(false)
     }

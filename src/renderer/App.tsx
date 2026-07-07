@@ -130,7 +130,7 @@ export default function App() {
       const next = parseInt(roomNumber, 10)
       if (!isNaN(next)) setRoomNumber(String(next + 1))
       await loadRooms()
-    } catch (e: any) { setFormError(e?.message?.includes('UNIQUE') ? t('roomsPage.roomExists', { roomNumber: roomNumber.trim() }) : t('roomsPage.insertFailed')) }
+    } catch (e) { setFormError((e as Error)?.message?.includes('UNIQUE') ? t('roomsPage.roomExists', { roomNumber: roomNumber.trim() }) : t('roomsPage.insertFailed')) }
   }
 
   if (editionLoading) return <div className="h-screen flex items-center justify-center bg-gray-50"><div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" /><p className="text-gray-600">{t('common.loading')}</p></div></div>
@@ -145,7 +145,7 @@ export default function App() {
   const renderPage = () => {
     switch (page) {
       case 'dashboard': return <div className="p-6 h-full"><RoomMatrix key={refreshKey} onCellClick={(room, date) => { setCheckInRoom(room); setCheckInDate(date) }} onOrderClick={(order, room) => { setSelectedOrder(order); setSelectedOrderRoom(room) }} /></div>
-      case 'rooms': return <div className="p-8"><RoomsPage rooms={rooms} roomTypes={roomTypes} roomNumber={roomNumber} setRoomNumber={setRoomNumber} roomType={roomType} setRoomType={setRoomType} roomPrice={roomPrice} setRoomPrice={setRoomPrice} onInsertRoom={handleInsertRoom} formError={formError} setFormError={setFormError} onOpenTypeManager={() => setShowTypeManager(true)} onDeleteRoom={async (id) => { try { await window.electron.db.deleteRoom(id); await loadRooms() } catch (e: any) { appShowAlert({ message: e?.message || t('roomsPage.deleteFailed'), variant: 'error' }) }}} onUpdateRoom={async (id, updates) => { try { await window.electron.db.updateRoom(id, updates); await loadRooms() } catch (e: any) { appShowAlert({ message: e?.message || t('roomsPage.updateFailed'), variant: 'error' }) }}} /></div>
+      case 'rooms': return <div className="p-8"><RoomsPage rooms={rooms} roomTypes={roomTypes} roomNumber={roomNumber} setRoomNumber={setRoomNumber} roomType={roomType} setRoomType={setRoomType} roomPrice={roomPrice} setRoomPrice={setRoomPrice} onInsertRoom={handleInsertRoom} formError={formError} setFormError={setFormError} onOpenTypeManager={() => setShowTypeManager(true)} onDeleteRoom={async (id) => { try { await window.electron.db.deleteRoom(id); await loadRooms() } catch (e) { appShowAlert({ message: (e as Error)?.message || t('roomsPage.deleteFailed'), variant: 'error' }) }}} onUpdateRoom={async (id, updates) => { try { await window.electron.db.updateRoom(id, updates); await loadRooms() } catch (e) { appShowAlert({ message: (e as Error)?.message || t('roomsPage.updateFailed'), variant: 'error' }) }}} /></div>
       case 'orders': return <div className="p-8"><OrdersPage refreshKey={refreshKey} initialFilter={orderFilter} initialCheckInDate={orderDateFilter} onEditOrder={(order, room) => { setSelectedOrder(order); setSelectedOrderRoom(room) }} /></div>
       case 'overview': return <RoomStatusOverview key={refreshKey} refreshKey={refreshKey} onCheckIn={(room) => { setCheckInRoom(room); setCheckInDate(todayStr) }} onViewOrder={(order, room) => { setSelectedOrder(order); setSelectedOrderRoom(room) }} />
       case 'finance': return <FinancePage refreshKey={refreshKey} />

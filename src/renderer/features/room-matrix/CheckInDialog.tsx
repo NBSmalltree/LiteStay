@@ -176,8 +176,8 @@ export default function CheckInDialog({ open, room, checkInDate, onClose, onSave
 
       onSaved()
       onClose()
-    } catch (e: any) {
-      setError(e?.message || t('checkIn.saveFailed'))
+    } catch (e) {
+      setError((e as Error)?.message || t('checkIn.saveFailed'))
     } finally {
       setSaving(false)
     }

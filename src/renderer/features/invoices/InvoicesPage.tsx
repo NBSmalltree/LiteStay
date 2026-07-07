@@ -78,8 +78,8 @@ export default function InvoicesPage({ refreshKey }: Props) {
     try {
       await window.electron.db.markInvoiceIssued(invoiceId)
       loadInvoices()
-    } catch (e: any) {
-      showAlert({ message: e?.message || t('invoices.operationFailed'), variant: 'error' })
+    } catch (e) {
+      showAlert({ message: (e as Error)?.message || t('invoices.operationFailed'), variant: 'error' })
     }
   }
 
@@ -87,8 +87,8 @@ export default function InvoicesPage({ refreshKey }: Props) {
     try {
       await window.electron.db.updateInvoice(invoiceId, { status: 'cancelled' })
       loadInvoices()
-    } catch (e: any) {
-      showAlert({ message: e?.message || t('invoices.operationFailed'), variant: 'error' })
+    } catch (e) {
+      showAlert({ message: (e as Error)?.message || t('invoices.operationFailed'), variant: 'error' })
     }
   }
 
@@ -101,8 +101,8 @@ export default function InvoicesPage({ refreshKey }: Props) {
       await window.electron.db.deleteInvoice(invoiceId)
       setConfirmDeleteId(null)
       loadInvoices()
-    } catch (e: any) {
-      showAlert({ message: e?.message || t('invoices.deleteFailed'), variant: 'error' })
+    } catch (e) {
+      showAlert({ message: (e as Error)?.message || t('invoices.deleteFailed'), variant: 'error' })
     }
   }
 
@@ -112,8 +112,8 @@ export default function InvoicesPage({ refreshKey }: Props) {
       if (result) {
         showAlert({ message: `${t('invoices.exportSuccess')}: ${result}`, variant: 'success' })
       }
-    } catch (e: any) {
-      showAlert({ message: e?.message || t('invoices.exportFailed'), variant: 'error' })
+    } catch (e) {
+      showAlert({ message: (e as Error)?.message || t('invoices.exportFailed'), variant: 'error' })
     }
   }
 

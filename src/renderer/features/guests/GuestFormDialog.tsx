@@ -65,8 +65,8 @@ export default function GuestFormDialog({ open, guest, onClose, onSaved }: Props
         })
       }
       onSaved()
-    } catch (e: any) {
-      setError(e?.message || t('guests.saveFailed'))
+    } catch (e) {
+      setError((e as Error)?.message || t('guests.saveFailed'))
     } finally {
       setSaving(false)
     }

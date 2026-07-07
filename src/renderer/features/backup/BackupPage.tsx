@@ -32,8 +32,8 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
     try {
       const list = await window.electron.db.getBackups()
       setBackups(list)
-    } catch (e: any) {
-      setStatusMessage({ type: 'error', text: t('backup.loadingFailed') + ': ' + e.message })
+    } catch (e) {
+      setStatusMessage({ type: 'error', text: t('backup.loadingFailed') + ': ' + (e as Error).message })
     }
   }, [])
 
@@ -57,8 +57,8 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
       setShowCreateDialog(false)
       setStatusMessage({ type: 'success', text: t('backup.backupCreated') })
       await loadBackups()
-    } catch (e: any) {
-      setStatusMessage({ type: 'error', text: t('backup.backupFailed') + ': ' + e.message })
+    } catch (e) {
+      setStatusMessage({ type: 'error', text: t('backup.backupFailed') + ': ' + (e as Error).message })
     } finally {
       setLoading(false)
     }
@@ -79,8 +79,8 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
       setTimeout(() => {
         window.location.reload()
       }, 2000)
-    } catch (e: any) {
-      setStatusMessage({ type: 'error', text: t('backup.restoreFailed') + ': ' + e.message })
+    } catch (e) {
+      setStatusMessage({ type: 'error', text: t('backup.restoreFailed') + ': ' + (e as Error).message })
     } finally {
       setLoading(false)
       setSelectedBackup(null)
@@ -93,8 +93,8 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
       if (result) {
         setStatusMessage({ type: 'success', text: t('backup.exportedTo') + ': ' + result })
       }
-    } catch (e: any) {
-      setStatusMessage({ type: 'error', text: t('backup.exportFailed') + ': ' + e.message })
+    } catch (e) {
+      setStatusMessage({ type: 'error', text: t('backup.exportFailed') + ': ' + (e as Error).message })
     }
   }
 
@@ -106,8 +106,8 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
         setStatusMessage({ type: 'success', text: t('backup.importSuccess') + ': ' + result.filename })
         await loadBackups()
       }
-    } catch (e: any) {
-      setStatusMessage({ type: 'error', text: t('backup.importFailed') + ': ' + e.message })
+    } catch (e) {
+      setStatusMessage({ type: 'error', text: t('backup.importFailed') + ': ' + (e as Error).message })
     } finally {
       setLoading(false)
     }
@@ -124,8 +124,8 @@ export default function BackupPage({ refreshKey }: { refreshKey?: number }) {
       await window.electron.db.deleteBackup(selectedBackup.filename)
       setStatusMessage({ type: 'success', text: t('backup.deleted') })
       await loadBackups()
-    } catch (e: any) {
-      setStatusMessage({ type: 'error', text: t('backup.deleteFailed') + ': ' + e.message })
+    } catch (e) {
+      setStatusMessage({ type: 'error', text: t('backup.deleteFailed') + ': ' + (e as Error).message })
     } finally {
       setShowConfirmDelete(false)
       setSelectedBackup(null)
