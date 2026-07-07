@@ -24,13 +24,6 @@ export function formatShortDate(d: Date): string {
   return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
-/** Order date display (used in OrdersPage) */
-export function formatOrderDate(d: Date): string {
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${d.getFullYear()}-${month}-${day}`
-}
-
 // Currency
 export function fmtCurrency(n: number, locale = 'zh-CN'): string {
   return `¥${n.toLocaleString(locale, { minimumFractionDigits: 0 })}`

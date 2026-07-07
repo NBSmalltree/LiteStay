@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Button, Select, DatePicker } from '../../components'
-import { formatOrderDate as formatDate } from '../../utils'
+import { fmtDate as formatDate } from '../../utils'
 import type { FeatureKey } from '../../../shared/editions'
 import type { RoomType } from '../../../shared/types'
 
