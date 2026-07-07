@@ -109,10 +109,9 @@ describe('DatePicker', () => {
 
   it('renders in English format when i18n language is en', async () => {
     // Override the i18n mock to return English
-    vi.mocked(useTranslation).mockImplementationOnce(() => ({
-      t: (key: string) => key,
-      i18n: { language: 'en', changeLanguage: vi.fn() },
-    }))
+    vi.mocked(useTranslation).mockImplementationOnce(() =>
+      ({ t: (key: string) => key, i18n: { language: 'en', changeLanguage: vi.fn() } }) as any
+    )
 
     const onChange = vi.fn()
     render(<DatePicker value="2026-07-06" onChange={onChange} />)
